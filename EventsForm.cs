@@ -21,10 +21,9 @@ namespace MunicipalServicesApp
             Load += EventsForm_Load;
         }
 
-        
         private void EventsForm_Load(object sender, EventArgs e)
         {
-            //Demo data
+            // Demo data
             AddEvent("Heritage Day Celebration", new DateTime(2025, 9, 24), "Cultural", "Parade and food market.");
             AddEvent("Heritage Business Expo", new DateTime(2025, 10, 25), "Business", "Support local businesses.");
             AddEvent("Job Fair", new DateTime(2025, 10, 28), "Employment", "Meet local companies hiring youth.");
@@ -37,6 +36,10 @@ namespace MunicipalServicesApp
             AddEvent("Art in the Park", new DateTime(2025, 12, 10), "Arts", "Outdoor art exhibition & workshops.");
 
             dgvEvents.CellClick += DgvEvents_CellClick;
+
+            // Handle showing recent searches when clicking the search box
+            txtSearch.Enter += TxtSearch_Enter;
+
             DisplayEvents();
             btnShowAll.Visible = false;
         }
@@ -50,7 +53,6 @@ namespace MunicipalServicesApp
             uniqueCategories.Add(category);
         }
 
-     
         private void DisplayEvents(List<Event>? list = null)
         {
             dgvEvents.Rows.Clear();
@@ -76,6 +78,10 @@ namespace MunicipalServicesApp
             if (searchHistory.Count >= 5)
                 searchHistory.Dequeue();
             searchHistory.Enqueue(keyword);
+
+            // Update AutoComplete list for next search
+            txtSearch.AutoCompleteCustomSource = new AutoCompleteStringCollection();
+            txtSearch.AutoCompleteCustomSource.AddRange(searchHistory.Reverse().ToArray());
 
             // Search events
             var results = eventsByDate
@@ -104,7 +110,6 @@ namespace MunicipalServicesApp
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
- 
         private void btnShowAll_Click(object sender, EventArgs e)
         {
             txtSearch.Clear();
@@ -113,7 +118,6 @@ namespace MunicipalServicesApp
             btnShowAll.Visible = false;
         }
 
-   
         private void GenerateRecommendations(string keyword, List<Event> currentResults)
         {
             var allEvents = eventsByDate.SelectMany(kv => kv.Value).ToList();
@@ -164,14 +168,20 @@ namespace MunicipalServicesApp
                 related.AddRange(trending);
             }
 
-            if (related.Count == 0)
+            // --- Build Recommendations and Recently Viewed Section ---
+            var recText = related.Count == 0
+                ? "You might also like:\nNo other related events found."
+                : "You might also like:\n" + string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
+
+            // Include recently viewed events (if available)
+            if (recentlyViewed.Count > 0)
             {
-                lblRecommendations.Text = "You might also like:\nNo other related events found.";
-                return;
+                var recent = recentlyViewed.Take(3)
+                    .Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}");
+                recText += "\n\nRecently viewed:\n" + string.Join("\n", recent);
             }
 
-            lblRecommendations.Text = "You might also like:\n" +
-                string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
+            lblRecommendations.Text = recText;
         }
 
         private void DgvEvents_CellClick(object? sender, DataGridViewCellEventArgs e)
@@ -188,6 +198,19 @@ namespace MunicipalServicesApp
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
+        }
+
+        // Show recent search suggestions when clicking inside the search bar
+        private void TxtSearch_Enter(object sender, EventArgs e)
+        {
+            if (searchHistory.Count == 0) return;
+
+            txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+
+            var autoComplete = new AutoCompleteStringCollection();
+            autoComplete.AddRange(searchHistory.Reverse().ToArray());
+            txtSearch.AutoCompleteCustomSource = autoComplete;
         }
 
         private void btnBack_Click(object sender, EventArgs e)

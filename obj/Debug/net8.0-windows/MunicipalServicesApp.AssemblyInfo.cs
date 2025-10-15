@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MunicipalServicesApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03d0da612f923b846852ead8622dddba9b957585")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1142c43a5e0ac5f28e70abcfb9d389c3baf04087")]
 [assembly: System.Reflection.AssemblyProductAttribute("MunicipalServicesApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MunicipalServicesApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
