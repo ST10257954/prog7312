@@ -8,10 +8,10 @@
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.Button btnSearch;
         private System.Windows.Forms.Button btnShowAll;
+        private System.Windows.Forms.Button btnBack;
         private System.Windows.Forms.DataGridView dgvEvents;
         private System.Windows.Forms.Label lblRecommendations;
-        private System.Windows.Forms.Panel pnlRecommendations; 
-        private System.Windows.Forms.Button btnBack;
+        private System.Windows.Forms.Panel pnlRecommendations; // scrollable panel for recommendations
 
         protected override void Dispose(bool disposing)
         {
@@ -28,10 +28,10 @@
             txtSearch = new TextBox();
             btnSearch = new Button();
             btnShowAll = new Button();
+            btnBack = new Button();
             dgvEvents = new DataGridView();
             lblRecommendations = new Label();
-            pnlRecommendations = new Panel(); // scroll panel
-            btnBack = new Button();
+            pnlRecommendations = new Panel();
 
             // --- Form setup (Iannace, 2025) ---
             this.Text = "Local Events & Announcements";
@@ -54,7 +54,7 @@
 
             // --- Search box ---
             txtSearch.Location = new Point(40, 90);
-            txtSearch.Size = new Size(480, 32);
+            txtSearch.Size = new Size(420, 32);
             txtSearch.Font = new Font("Segoe UI", 11);
             txtSearch.PlaceholderText = "Search by keyword, category, or date...";
             txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
@@ -67,7 +67,7 @@
             btnSearch.ForeColor = Color.White;
             btnSearch.FlatStyle = FlatStyle.Flat;
             btnSearch.Size = new Size(100, 32);
-            btnSearch.Location = new Point(530, 90);
+            btnSearch.Location = new Point(470, 90);
             btnSearch.Click += btnSearch_Click;
 
             // --- Show All button (Iannace, 2025) ---
@@ -77,13 +77,23 @@
             btnShowAll.ForeColor = Color.White;
             btnShowAll.FlatStyle = FlatStyle.Flat;
             btnShowAll.Size = new Size(150, 32);
-            btnShowAll.Location = new Point(640, 90);
+            btnShowAll.Location = new Point(580, 90);
             btnShowAll.Visible = false;
             btnShowAll.Click += btnShowAll_Click;
 
+            // --- Back button moved next to Show All ---
+            btnBack.Text = "Back to Main Menu";
+            btnBack.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            btnBack.BackColor = Color.FromArgb(27, 94, 32);
+            btnBack.ForeColor = Color.White;
+            btnBack.FlatStyle = FlatStyle.Flat;
+            btnBack.Size = new Size(160, 32);
+            btnBack.Location = new Point(740, 90);
+            btnBack.Click += btnBack_Click;
+
             // --- Events table (Uizard, 2023) ---
             dgvEvents.Location = new Point(40, 140);
-            dgvEvents.Size = new Size(800, 350);
+            dgvEvents.Size = new Size(860, 340);
             dgvEvents.AllowUserToAddRows = false;
             dgvEvents.ReadOnly = true;
             dgvEvents.RowHeadersVisible = false;
@@ -93,40 +103,40 @@
             dgvEvents.Columns.Add("Category", "Category");
             dgvEvents.Columns.Add("Description", "Description");
 
-            // --- Recommendations Panel (scrollable for long text) ---
-            pnlRecommendations.Location = new Point(40, 510);
-            pnlRecommendations.Size = new Size(800, 100);
-            pnlRecommendations.BorderStyle = BorderStyle.None;
+            // --- Recommendations Panel (scrollable with padding + shadow) ---
+            pnlRecommendations.Location = new Point(40, 500);
+            pnlRecommendations.Size = new Size(860, 120);
+            pnlRecommendations.BackColor = Color.FromArgb(240, 248, 240); // soft green tint
+            pnlRecommendations.BorderStyle = BorderStyle.FixedSingle;
+            pnlRecommendations.Padding = new Padding(15);
             pnlRecommendations.AutoScroll = true;
-            pnlRecommendations.BackColor = Color.White; // matches form theme
 
-            // --- Recommendations Label (inside the scroll panel) ---
-            lblRecommendations.Font = new Font("Segoe UI", 10, FontStyle.Italic);
-            lblRecommendations.ForeColor = Color.FromArgb(60, 60, 60);
-            lblRecommendations.Location = new Point(0, 0);
+            // Add subtle shadow using Paint event
+            pnlRecommendations.Paint += (s, e) =>
+            {
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(70, 0, 0, 0)))
+                    e.Graphics.FillRectangle(shadowBrush, pnlRecommendations.Width - 6, 4, 6, pnlRecommendations.Height - 8);
+            };
+
+            // --- Recommendations Label (inside panel) ---
+            lblRecommendations.Font = new Font("Segoe UI", 10.5f, FontStyle.Italic);
+            lblRecommendations.ForeColor = Color.FromArgb(40, 60, 40);
             lblRecommendations.AutoSize = true;
-            lblRecommendations.MaximumSize = new Size(760, 0); // wrap text nicely
+            lblRecommendations.MaximumSize = new Size(820, 0); // wraps neatly
+            lblRecommendations.TextAlign = ContentAlignment.TopLeft;
             lblRecommendations.Text = "Recommendations will appear here...";
+            lblRecommendations.Location = new Point(10, 10);
             pnlRecommendations.Controls.Add(lblRecommendations);
-
-            // --- Back button (Iannace, 2025) ---
-            btnBack.Text = "Back to Main Menu";
-            btnBack.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            btnBack.BackColor = Color.FromArgb(46, 125, 50);
-            btnBack.ForeColor = Color.White;
-            btnBack.FlatStyle = FlatStyle.Flat;
-            btnBack.Size = new Size(160, 32);
-            btnBack.Location = new Point(720, 580);
-            btnBack.Click += btnBack_Click;
 
             // --- Add controls ---
             Controls.AddRange(new Control[]
             {
-                header, txtSearch, btnSearch, btnShowAll, dgvEvents, pnlRecommendations, btnBack
+                header, txtSearch, btnSearch, btnShowAll, btnBack, dgvEvents, pnlRecommendations
             });
         }
     }
 }
+
 
 
 /* References 
