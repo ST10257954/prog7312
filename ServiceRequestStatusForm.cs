@@ -257,20 +257,46 @@ namespace MunicipalServicesApp
 
         private void BtnGraphDemo_Click(object sender, EventArgs e)
         {
+            if (allIssues == null || allIssues.Count == 0)
+            {
+                MessageBox.Show("No service requests found. Please refresh the list first.",
+                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Get distinct areas from the current issues
+            var availableAreas = allIssues.Select(i => i.Area).Distinct().ToArray();
+            string selectedArea = ShowAreaSelectionDialog(availableAreas);
+            if (string.IsNullOrEmpty(selectedArea)) return;
+
+            // Filter issues for that area, sorted by urgency
+            var filteredIssues = allIssues
+                .Where(i => i.Area == selectedArea)
+                .OrderBy(i => i.Priority)
+                .ToList();
+
+            if (filteredIssues.Count == 0)
+            {
+                MessageBox.Show($"No service requests found for {selectedArea}.",
+                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Display the graph panel
             rightCard.Visible = false;
             graphPanel.Visible = true;
             btnGraphDemo.Visible = false;
             btnBackToDetails.Visible = true;
 
+            // Pass the filtered issues and area into the ServiceGraph
+            var logic = new ServiceGraph();
+            logic.DemoGraphTraversal(filteredIssues, selectedArea);
+
             graphPanel.Paint += (s, ev) =>
             {
-                var visual = new ServiceGraph();
-                visual.DrawGraph(ev);
+                logic.DrawGraph(ev);
             };
             graphPanel.Refresh();
-
-            var logic = new ServiceGraph();
-            logic.DemoGraphTraversal();
         }
 
         private void BtnBackToDetails_Click(object sender, EventArgs e)
@@ -463,5 +489,59 @@ namespace MunicipalServicesApp
                 $"Channel: {issue.Channel}\n" +
                 $"Created: {issue.CreatedAt:g}";
         }
+        private string ShowAreaSelectionDialog(string[] availableAreas)
+        {
+            if (availableAreas == null || availableAreas.Length == 0)
+            {
+                MessageBox.Show("No areas found in the current issues.",
+                    "No Areas", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return string.Empty;
+            }
+
+            using (var form = new Form())
+            {
+                form.Text = "Select Service Area";
+                form.StartPosition = FormStartPosition.CenterParent;
+                form.ClientSize = new Size(300, 150);
+                form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                form.MaximizeBox = false;
+                form.MinimizeBox = false;
+
+                var label = new Label
+                {
+                    Text = "Choose a service area to optimise route for:",
+                    Dock = DockStyle.Top,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Padding = new Padding(0, 15, 0, 10)
+                };
+
+                var combo = new ComboBox
+                {
+                    Dock = DockStyle.Top,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                combo.Items.AddRange(availableAreas);
+                combo.SelectedIndex = 0;
+
+                var ok = new Button
+                {
+                    Text = "OK",
+                    Dock = DockStyle.Bottom,
+                    DialogResult = DialogResult.OK
+                };
+
+                form.Controls.Add(ok);
+                form.Controls.Add(combo);
+                form.Controls.Add(label);
+
+                form.AcceptButton = ok;
+
+                return form.ShowDialog() == DialogResult.OK
+                    ? combo.SelectedItem.ToString()
+                    : string.Empty;
+            }
+        }
+
     }
+
 }
