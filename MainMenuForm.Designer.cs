@@ -95,18 +95,20 @@ namespace MunicipalServicesApp
             btnLocalEvents.MouseLeave += (s, e) => btnLocalEvents.BackColor = baseColor;
             btnLocalEvents.Click += btnLocalEvents_Click;
 
-            // Status button (disabled)
+            // Status button (now enabled and functional)
             btnStatus.FlatStyle = FlatStyle.Flat;
             btnStatus.FlatAppearance.BorderSize = 0;
             btnStatus.Font = btnFont;
-            btnStatus.ForeColor = Color.Gray;
+            btnStatus.ForeColor = Color.FromArgb(40, 40, 40);
             btnStatus.BackColor = baseColor;
-            btnStatus.Enabled = false;
             btnStatus.Size = btnSize;
             btnStatus.Location = new Point(20, 165);
-            btnStatus.Text = "🕓  Service Request Status (coming soon)";
+            btnStatus.Text = "🕓  View Service Requests";
             btnStatus.TextAlign = ContentAlignment.MiddleLeft;
             btnStatus.Padding = new Padding(25, 0, 0, 0);
+            btnStatus.MouseEnter += (s, e) => btnStatus.BackColor = hoverColor;
+            btnStatus.MouseLeave += (s, e) => btnStatus.BackColor = baseColor;
+            btnStatus.Click += btnStatus_Click;
 
             // Footer
             lblFooter.Font = new Font("Segoe UI", 9F);
@@ -187,15 +189,37 @@ namespace MunicipalServicesApp
         // Background gradient
         private void MainMenuForm_Paint(object sender, PaintEventArgs e)
         {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var brush = new LinearGradientBrush(
-                this.ClientRectangle,
-                Color.FromArgb(245, 247, 240),
-                Color.FromArgb(228, 237, 227),
-                LinearGradientMode.Vertical))
+            // Don’t draw until the form is properly created and sized
+            if (!IsHandleCreated || !Visible)
+                return;
+
+            int width = ClientSize.Width;
+            int height = ClientSize.Height;
+
+            // Avoid invalid rectangles
+            if (width < 2 || height < 2)
+                return;
+
+            Rectangle rect = new Rectangle(0, 0, width, height);
+
+            try
             {
-                e.Graphics.FillRectangle(brush, this.ClientRectangle);
+                using (var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    rect,
+                    Color.FromArgb(245, 247, 240),   // top color
+                    Color.FromArgb(228, 237, 227),   // bottom color
+                    System.Drawing.Drawing2D.LinearGradientMode.Vertical))
+                {
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    e.Graphics.FillRectangle(brush, rect);
+                }
+            }
+            catch (ArgumentException)
+            {
+                // Skip drawing if the rectangle is invalid during resizing
             }
         }
+
+
     }
 }

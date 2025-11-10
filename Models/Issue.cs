@@ -20,6 +20,12 @@ namespace MunicipalServicesApp.Models
         public string Channel { get; set; } = "DesktopApp";        // source channel (App/LowData/Offline-Queued)
 
         public DateTime CreatedAt { get; set; }            // when the user created the draft (set on submit)
+
+        public int Priority { get; set; } = 3; // default medium priority
+
+        public string AttachmentPath { get; set; }  // File path or URL of uploaded attachment
+
+
     }
 }
 /*References

@@ -23,5 +23,12 @@ namespace MunicipalServicesApp
             using (var form = new EventsForm())
                 form.ShowDialog();
         }
+
+        // Open Service Request Status form
+        private void btnStatus_Click(object sender, EventArgs e)
+        {
+            using (var form = new ServiceRequestStatusForm())
+                form.ShowDialog();
+        }
     }
 }
