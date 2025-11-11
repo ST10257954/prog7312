@@ -11,7 +11,7 @@
         private System.Windows.Forms.Button btnBack;
         private System.Windows.Forms.DataGridView dgvEvents;
         private System.Windows.Forms.Label lblRecommendations;
-        private System.Windows.Forms.Panel pnlRecommendations; // scrollable panel for recommendations
+        private System.Windows.Forms.Panel pnlRecommendations;
 
         protected override void Dispose(bool disposing)
         {
@@ -22,137 +22,130 @@
 
         private void InitializeComponent()
         {
-            // UI components  (Uizard, 2023)
-            header = new Panel();
-            lblHeader = new Label();
-            txtSearch = new TextBox();
-            btnSearch = new Button();
-            btnShowAll = new Button();
-            btnBack = new Button();
-            dgvEvents = new DataGridView();
-            lblRecommendations = new Label();
-            pnlRecommendations = new Panel();
+            // Initialize components
+            this.header = new System.Windows.Forms.Panel();
+            this.lblHeader = new System.Windows.Forms.Label();
+            this.txtSearch = new System.Windows.Forms.TextBox();
+            this.btnSearch = new System.Windows.Forms.Button();
+            this.btnShowAll = new System.Windows.Forms.Button();
+            this.btnBack = new System.Windows.Forms.Button();
+            this.dgvEvents = new System.Windows.Forms.DataGridView();
+            this.pnlRecommendations = new System.Windows.Forms.Panel();
+            this.lblRecommendations = new System.Windows.Forms.Label();
 
-            // --- Form setup (Iannace, 2025) ---
+            ((System.ComponentModel.ISupportInitialize)(this.dgvEvents)).BeginInit();
+            this.SuspendLayout();
+
+            // --- Form properties ---
             this.Text = "Local Events & Announcements";
-            this.BackColor = Color.WhiteSmoke;
-            this.ClientSize = new Size(920, 640);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.BackColor = System.Drawing.Color.WhiteSmoke;
+            this.ClientSize = new System.Drawing.Size(920, 640);
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
 
             // --- Header ---
-            header.Dock = DockStyle.Top;
-            header.Height = 70;
-            header.BackColor = Color.FromArgb(27, 94, 32);
-            lblHeader.Text = "Municipal Services — Local Events & Announcements";
-            lblHeader.ForeColor = Color.White;
-            lblHeader.Font = new Font("Segoe UI", 16, FontStyle.Bold);
-            lblHeader.TextAlign = ContentAlignment.MiddleCenter;
-            lblHeader.Dock = DockStyle.Fill;
-            header.Controls.Add(lblHeader);
+            this.header.Dock = System.Windows.Forms.DockStyle.Top;
+            this.header.Height = 70;
+            this.header.BackColor = System.Drawing.Color.FromArgb(27, 94, 32);
+            this.lblHeader.Text = "Municipal Services — Local Events & Announcements";
+            this.lblHeader.ForeColor = System.Drawing.Color.White;
+            this.lblHeader.Font = new System.Drawing.Font("Segoe UI", 16, System.Drawing.FontStyle.Bold);
+            this.lblHeader.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.lblHeader.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.header.Controls.Add(this.lblHeader);
 
             // --- Search box ---
-            txtSearch.Location = new Point(40, 90);
-            txtSearch.Size = new Size(420, 32);
-            txtSearch.Font = new Font("Segoe UI", 11);
-            txtSearch.PlaceholderText = "Search by keyword, category, or date...";
-            txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-            txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            this.txtSearch.Location = new System.Drawing.Point(40, 90);
+            this.txtSearch.Size = new System.Drawing.Size(420, 32);
+            this.txtSearch.Font = new System.Drawing.Font("Segoe UI", 11);
+            this.txtSearch.PlaceholderText = "Search by keyword, category, or date...";
+            this.txtSearch.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+            this.txtSearch.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.CustomSource;
 
             // --- Search button ---
-            btnSearch.Text = "Search";
-            btnSearch.Font = new Font("Segoe UI Semibold", 11);
-            btnSearch.BackColor = Color.FromArgb(46, 125, 50);
-            btnSearch.ForeColor = Color.White;
-            btnSearch.FlatStyle = FlatStyle.Flat;
-            btnSearch.Size = new Size(100, 32);
-            btnSearch.Location = new Point(470, 90);
-            btnSearch.Click += btnSearch_Click;
+            this.btnSearch.Text = "Search";
+            this.btnSearch.Font = new System.Drawing.Font("Segoe UI Semibold", 11);
+            this.btnSearch.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
+            this.btnSearch.ForeColor = System.Drawing.Color.White;
+            this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSearch.Size = new System.Drawing.Size(100, 32);
+            this.btnSearch.Location = new System.Drawing.Point(470, 90);
+            this.btnSearch.Click += new System.EventHandler(this.btnSearch_Click);
 
-            // --- Show All button (Iannace, 2025) ---
-            btnShowAll.Text = "Show All Events";
-            btnShowAll.Font = new Font("Segoe UI Semibold", 11);
-            btnShowAll.BackColor = Color.FromArgb(27, 94, 32);
-            btnShowAll.ForeColor = Color.White;
-            btnShowAll.FlatStyle = FlatStyle.Flat;
-            btnShowAll.Size = new Size(150, 32);
-            btnShowAll.Location = new Point(580, 90);
-            btnShowAll.Visible = false;
-            btnShowAll.Click += btnShowAll_Click;
+            // --- Show All button ---
+            this.btnShowAll.Text = "Show All Events";
+            this.btnShowAll.Font = new System.Drawing.Font("Segoe UI Semibold", 11);
+            this.btnShowAll.BackColor = System.Drawing.Color.FromArgb(27, 94, 32);
+            this.btnShowAll.ForeColor = System.Drawing.Color.White;
+            this.btnShowAll.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnShowAll.Size = new System.Drawing.Size(150, 32);
+            this.btnShowAll.Location = new System.Drawing.Point(580, 90);
+            this.btnShowAll.Visible = false;
+            this.btnShowAll.Click += new System.EventHandler(this.btnShowAll_Click);
 
-            // --- Back button moved next to Show All ---
-            btnBack.Text = "Back to Main Menu";
-            btnBack.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            btnBack.BackColor = Color.FromArgb(27, 94, 32);
-            btnBack.ForeColor = Color.White;
-            btnBack.FlatStyle = FlatStyle.Flat;
-            btnBack.Size = new Size(160, 32);
-            btnBack.Location = new Point(740, 90);
-            btnBack.Click += btnBack_Click;
+            // --- Back button ---
+            this.btnBack.Text = "Back to Main Menu";
+            this.btnBack.Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold);
+            this.btnBack.BackColor = System.Drawing.Color.FromArgb(27, 94, 32);
+            this.btnBack.ForeColor = System.Drawing.Color.White;
+            this.btnBack.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnBack.Size = new System.Drawing.Size(160, 32);
+            this.btnBack.Location = new System.Drawing.Point(740, 90);
+            this.btnBack.Click += new System.EventHandler(this.btnBack_Click);
 
-            // --- Events table (Uizard, 2023) ---
-            dgvEvents.Location = new Point(40, 140);
-            dgvEvents.Size = new Size(860, 340);
-            dgvEvents.AllowUserToAddRows = false;
-            dgvEvents.ReadOnly = true;
-            dgvEvents.RowHeadersVisible = false;
-            dgvEvents.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvEvents.Columns.Add("Title", "Title");
-            dgvEvents.Columns.Add("Date", "Date");
-            dgvEvents.Columns.Add("Category", "Category");
-            dgvEvents.Columns.Add("Description", "Description");
+            // --- Events table ---
+            this.dgvEvents.Location = new System.Drawing.Point(40, 140);
+            this.dgvEvents.Size = new System.Drawing.Size(860, 310);
+            this.dgvEvents.AllowUserToAddRows = false;
+            this.dgvEvents.ReadOnly = true;
+            this.dgvEvents.RowHeadersVisible = false;
+            this.dgvEvents.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.dgvEvents.Columns.Add("Title", "Title");
+            this.dgvEvents.Columns.Add("Date", "Date");
+            this.dgvEvents.Columns.Add("Category", "Category");
+            this.dgvEvents.Columns.Add("Description", "Description");
 
-            // --- Recommendations Panel (scrollable with padding + shadow) ---
-            pnlRecommendations.Location = new Point(40, 500);
-            pnlRecommendations.Size = new Size(860, 120);
-            pnlRecommendations.BackColor = Color.FromArgb(240, 248, 240); // soft green tint
-            pnlRecommendations.BorderStyle = BorderStyle.FixedSingle;
-            pnlRecommendations.Padding = new Padding(15);
-            pnlRecommendations.AutoScroll = true;
+            // --- Recommendations Panel ---
+            this.pnlRecommendations.Location = new System.Drawing.Point(40, 470);
+            this.pnlRecommendations.Size = new System.Drawing.Size(860, 120);
+            this.pnlRecommendations.BackColor = System.Drawing.Color.FromArgb(240, 248, 240);
+            this.pnlRecommendations.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlRecommendations.Padding = new System.Windows.Forms.Padding(15);
+            this.pnlRecommendations.AutoScroll = true;
 
-            // Add subtle shadow using Paint event
-            pnlRecommendations.Paint += (s, e) =>
+            this.pnlRecommendations.Paint += (s, e) =>
             {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(70, 0, 0, 0)))
+                using (var shadowBrush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(70, 0, 0, 0)))
                     e.Graphics.FillRectangle(shadowBrush, pnlRecommendations.Width - 6, 4, 6, pnlRecommendations.Height - 8);
             };
 
-            // --- Recommendations Label (inside panel) ---
-            lblRecommendations.Font = new Font("Segoe UI", 10.5f, FontStyle.Italic);
-            lblRecommendations.ForeColor = Color.FromArgb(40, 60, 40);
-            lblRecommendations.AutoSize = true;
-            lblRecommendations.MaximumSize = new Size(820, 0); // wraps neatly
-            lblRecommendations.TextAlign = ContentAlignment.TopLeft;
-            lblRecommendations.Text = "Recommendations will appear here...";
-            lblRecommendations.Location = new Point(10, 10);
-            pnlRecommendations.Controls.Add(lblRecommendations);
+            // --- Recommendations Label ---
+            this.lblRecommendations.Font = new System.Drawing.Font("Segoe UI", 10.5f, System.Drawing.FontStyle.Italic);
+            this.lblRecommendations.ForeColor = System.Drawing.Color.FromArgb(40, 60, 40);
+            this.lblRecommendations.AutoSize = true;
+            this.lblRecommendations.MaximumSize = new System.Drawing.Size(820, 0);
+            this.lblRecommendations.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.lblRecommendations.Text = "Recommendations will appear here...";
+            this.lblRecommendations.Location = new System.Drawing.Point(10, 10);
+            this.lblRecommendations.Visible = false;
+            this.pnlRecommendations.Controls.Add(this.lblRecommendations);
 
-            // --- Add controls ---
-            Controls.AddRange(new Control[]
+            // --- Add all controls to the form ---
+            this.Controls.AddRange(new System.Windows.Forms.Control[]
             {
-                header, txtSearch, btnSearch, btnShowAll, btnBack, dgvEvents, pnlRecommendations
+                this.header,
+                this.txtSearch,
+                this.btnSearch,
+                this.btnShowAll,
+                this.btnBack,
+                this.dgvEvents,
+                this.pnlRecommendations
             });
+
+            ((System.ComponentModel.ISupportInitialize)(this.dgvEvents)).EndInit();
+            this.ResumeLayout(false);
+            this.PerformLayout();
         }
     }
 }
-
-
-
-/* References 
-Alexandra, 2017. What Is a C# Queue? How It Works, and the Benefits and Challenges of Working with C# Queues. [Online] 
-Available at: https://stackify.com/what-is-csharp-queue/
-[Accessed 15 October 2025].
-geeksforgeeks, 2025. SortedDictionary Implementation in C#. [Online] 
-Available at: https://www.geeksforgeeks.org/c-sharp/sorteddictionary-implementation-in-c-sharp/
-[Accessed 13 October 2025].
-Mooney, L., 2022. Understanding the Stack and Heap in C#. [Online] 
-Available at: https://endjin.com/blog/2022/07/understanding-the-stack-and-heap-in-csharp-dotnet
-[Accessed 03 October 2025].
-Nicholas, 2012. C# Web Browser History Help. [Online] 
-Available at: https://www.c-sharpcorner.com/forums/c-sharp-web-browser-history-help
-[Accessed 03 October 2025].
-w3schools, n.d.. DSA Hash Sets. [Online] 
-Available at: https://www.w3schools.com/dsa/dsa_data_hashsets.php#:~:text=A%20Hash%20Set%20is%20a,is%20part%20of%20a%20set.
-[Accessed 03 October 2025].
-*/

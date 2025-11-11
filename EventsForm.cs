@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using MunicipalServicesApp.Models;
@@ -10,10 +11,13 @@ namespace MunicipalServicesApp
     public partial class EventsForm : Form
     {
         // Core data structures
-        private readonly SortedDictionary<DateTime, List<Event>> eventsByDate = new(); //(geeksforgeeks, 2025)
-        private readonly Queue<string> searchHistory = new();      // Stores last 5 searches (Alexandra, 2017)
-        private readonly Stack<Event> recentlyViewed = new();      // Tracks recently viewed events (Mooney, 2022)
-        private readonly HashSet<string> uniqueCategories = new(); // Stores unique event categories  (w3schools, n.d.)
+        private readonly SortedDictionary<DateTime, List<Event>> eventsByDate = new();
+        private readonly Queue<string> searchHistory = new();
+        private readonly Stack<Event> recentlyViewed = new();
+        private readonly HashSet<string> uniqueCategories = new();
+
+        // Save/Load search history file
+        private readonly string historyFile = "searchHistory.txt";
 
         public EventsForm()
         {
@@ -23,6 +27,9 @@ namespace MunicipalServicesApp
 
         private void EventsForm_Load(object sender, EventArgs e)
         {
+            // Load previous search history
+            LoadSearchHistory();
+
             // Demo data
             AddEvent("Heritage Day Celebration", new DateTime(2025, 9, 24), "Cultural", "Parade and food market.");
             AddEvent("Heritage Business Expo", new DateTime(2025, 10, 25), "Business", "Support local businesses.");
@@ -35,21 +42,29 @@ namespace MunicipalServicesApp
             AddEvent("Holiday Food Drive", new DateTime(2025, 12, 5), "Charity", "Donate food & support families.");
             AddEvent("Art in the Park", new DateTime(2025, 12, 10), "Arts", "Outdoor art exhibition & workshops.");
 
+            // Set DataGridView column sizing and events
+            dgvEvents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvEvents.CellClick += DgvEvents_CellClick;
-
-            // Handle showing recent searches when clicking the search box
             txtSearch.Enter += TxtSearch_Enter;
+
+            // Allow Enter key to trigger Search
+            this.AcceptButton = btnSearch;
 
             DisplayEvents();
             btnShowAll.Visible = false;
+
+            // Improve recommendation text appearance
+            lblRecommendations.AutoEllipsis = false;
+            lblRecommendations.MaximumSize = new Size(820, 0);
+            lblRecommendations.AutoSize = true;
         }
 
         private void AddEvent(string title, DateTime date, string category, string description)
         {
             if (!eventsByDate.ContainsKey(date))
                 eventsByDate[date] = new List<Event>();
-            eventsByDate[date].Add(new Event(title, date, category, description));
 
+            eventsByDate[date].Add(new Event(title, date, category, description));
             uniqueCategories.Add(category);
         }
 
@@ -62,6 +77,7 @@ namespace MunicipalServicesApp
                 dgvEvents.Rows.Add(ev.Title, ev.Date.ToShortDateString(), ev.Category, ev.Description);
 
             lblRecommendations.Text = list == null ? "Showing all events." : "Filtered results displayed below.";
+            lblRecommendations.Visible = list != null;
         }
 
         private void btnSearch_Click(object sender, EventArgs e)
@@ -74,16 +90,15 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // Maintain search history (max 5) (Nicholas, 2012)
+            // Maintain last 5 searches
             if (searchHistory.Count >= 5)
                 searchHistory.Dequeue();
             searchHistory.Enqueue(keyword);
+            SaveSearchHistory();
 
-            // Update AutoComplete list for next search
             txtSearch.AutoCompleteCustomSource = new AutoCompleteStringCollection();
             txtSearch.AutoCompleteCustomSource.AddRange(searchHistory.Reverse().ToArray());
 
-            // Search events
             var results = eventsByDate
                 .SelectMany(kv => kv.Value)
                 .Where(ev => ev.Title.ToLower().Contains(keyword)
@@ -95,7 +110,7 @@ namespace MunicipalServicesApp
             {
                 MessageBox.Show("No matching events found.", "Search",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
-                lblRecommendations.Text = "";
+                lblRecommendations.Visible = false;
                 return;
             }
 
@@ -112,9 +127,11 @@ namespace MunicipalServicesApp
 
         private void btnShowAll_Click(object sender, EventArgs e)
         {
+            // Reset everything to default
             txtSearch.Clear();
+            recentlyViewed.Clear();
+            lblRecommendations.Visible = false;
             DisplayEvents();
-            lblRecommendations.Text = "Showing all events.";
             btnShowAll.Visible = false;
         }
 
@@ -168,12 +185,10 @@ namespace MunicipalServicesApp
                 related.AddRange(trending);
             }
 
-            // --- Build Recommendations and Recently Viewed Section ---
             var recText = related.Count == 0
                 ? "You might also like:\nNo other related events found."
                 : "You might also like:\n" + string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
 
-            // Include recently viewed events (if available)
             if (recentlyViewed.Count > 0)
             {
                 var recent = recentlyViewed.Take(3)
@@ -181,7 +196,8 @@ namespace MunicipalServicesApp
                 recText += "\n\nRecently viewed:\n" + string.Join("\n", recent);
             }
 
-            lblRecommendations.Text = recText;
+            lblRecommendations.Text = recText.Replace("\n", Environment.NewLine);
+            lblRecommendations.Visible = true;
         }
 
         private void DgvEvents_CellClick(object? sender, DataGridViewCellEventArgs e)
@@ -200,7 +216,6 @@ namespace MunicipalServicesApp
             }
         }
 
-        // Show recent search suggestions when clicking inside the search bar
         private void TxtSearch_Enter(object sender, EventArgs e)
         {
             if (searchHistory.Count == 0) return;
@@ -213,6 +228,30 @@ namespace MunicipalServicesApp
             txtSearch.AutoCompleteCustomSource = autoComplete;
         }
 
+        // --- Save & Load search history ---
+        private void SaveSearchHistory()
+        {
+            try
+            {
+                File.WriteAllLines(historyFile, searchHistory);
+            }
+            catch { }
+        }
+
+        private void LoadSearchHistory()
+        {
+            try
+            {
+                if (File.Exists(historyFile))
+                {
+                    var lines = File.ReadAllLines(historyFile);
+                    foreach (var l in lines.TakeLast(5))
+                        searchHistory.Enqueue(l);
+                }
+            }
+            catch { }
+        }
+
         private void btnBack_Click(object sender, EventArgs e)
         {
             this.Hide();
@@ -222,20 +261,3 @@ namespace MunicipalServicesApp
         }
     }
 }
-/* References 
-Alexandra, 2017. What Is a C# Queue? How It Works, and the Benefits and Challenges of Working with C# Queues. [Online] 
-Available at: https://stackify.com/what-is-csharp-queue/
-[Accessed 15 October 2025].
-geeksforgeeks, 2025. SortedDictionary Implementation in C#. [Online] 
-Available at: https://www.geeksforgeeks.org/c-sharp/sorteddictionary-implementation-in-c-sharp/
-[Accessed 13 October 2025].
-Mooney, L., 2022. Understanding the Stack and Heap in C#. [Online] 
-Available at: https://endjin.com/blog/2022/07/understanding-the-stack-and-heap-in-csharp-dotnet
-[Accessed 03 October 2025].
-Nicholas, 2012. C# Web Browser History Help. [Online] 
-Available at: https://www.c-sharpcorner.com/forums/c-sharp-web-browser-history-help
-[Accessed 03 October 2025].
-w3schools, n.d.. DSA Hash Sets. [Online] 
-Available at: https://www.w3schools.com/dsa/dsa_data_hashsets.php#:~:text=A%20Hash%20Set%20is%20a,is%20part%20of%20a%20set.
-[Accessed 03 October 2025].
-*/
