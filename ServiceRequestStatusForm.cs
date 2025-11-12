@@ -23,6 +23,9 @@ namespace MunicipalServicesApp
         private Label lblDetailsTitle;
         private Label lblDetailsBody;
         private FlowLayoutPanel attachmentPanel;
+        private ComboBox cmbStatus;
+        private Label lblStatusColor;
+
 
         private Panel rightCard;
         private Panel graphPanel;
@@ -30,6 +33,9 @@ namespace MunicipalServicesApp
         private List<Issue> allIssues = new();
         private ServiceRequestBST bst = new();
         private MinHeap priorityHeap = new();
+
+        // Keep a single paint handler bound to the graph panel
+        private PaintEventHandler graphPaintHandler;
 
         public ServiceRequestStatusForm()
         {
@@ -62,6 +68,7 @@ namespace MunicipalServicesApp
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
             Controls.Add(root);
 
+            /* ---------------------------- Toolbar Section ---------------------------- */
             var toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -96,8 +103,11 @@ namespace MunicipalServicesApp
             btnBackToDetails.Click += BtnBackToDetails_Click;
 
             toolbar.Controls.AddRange(new Control[]
-                { btnRefresh, btnBack, btnUrgent, btnGraphDemo, btnBackToDetails });
+            {
+        btnRefresh, btnBack, btnUrgent, btnGraphDemo, btnBackToDetails
+            });
 
+            /* -------------------------- Main Split Layout --------------------------- */
             var mainSplit = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -110,6 +120,7 @@ namespace MunicipalServicesApp
             mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
             root.Controls.Add(mainSplit, 0, 1);
 
+            /* --------------------------- Left Side Panel ---------------------------- */
             var leftCard = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -117,8 +128,7 @@ namespace MunicipalServicesApp
                 Padding = new Padding(10),
                 Margin = new Padding(0, 0, 8, 0)
             };
-            leftCard.Paint += (s, e) =>
-                ThemeManager.DrawCardShadow(e.Graphics, leftCard.ClientRectangle);
+            leftCard.Paint += (s, e) => ThemeManager.DrawCardShadow(e.Graphics, leftCard.ClientRectangle);
 
             tvRequests = new TreeView
             {
@@ -131,6 +141,7 @@ namespace MunicipalServicesApp
             leftCard.Controls.Add(tvRequests);
             mainSplit.Controls.Add(leftCard, 0, 0);
 
+            /* -------------------------- Right Side Panel ---------------------------- */
             rightCard = new Panel
             {
                 Name = "rightCard",
@@ -139,10 +150,10 @@ namespace MunicipalServicesApp
                 Margin = new Padding(8, 0, 0, 0),
                 Padding = new Padding(0)
             };
-            rightCard.Paint += (s, e) =>
-                ThemeManager.DrawCardShadow(e.Graphics, rightCard.ClientRectangle);
+            rightCard.Paint += (s, e) => ThemeManager.DrawCardShadow(e.Graphics, rightCard.ClientRectangle);
             mainSplit.Controls.Add(rightCard, 1, 0);
 
+            /* ------------------------ Content + Details Card ------------------------ */
             var contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -153,12 +164,14 @@ namespace MunicipalServicesApp
             var detailsLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 2,
+                RowCount = 4,
                 ColumnCount = 1,
                 BackColor = Color.White
             };
-            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45));
-            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 45)); // Title
+            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 70));  // Body
+            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // Status label
+            detailsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // Dropdown
             contentPanel.Controls.Add(detailsLayout);
 
             lblDetailsTitle = new Label
@@ -181,6 +194,31 @@ namespace MunicipalServicesApp
                 BackColor = Color.White
             };
             detailsLayout.Controls.Add(lblDetailsBody, 0, 1);
+
+            // --- Status label ---
+            lblStatusColor = new Label
+            {
+                Text = "Status: Pending",
+                ForeColor = Color.DarkRed,
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(6, 4, 6, 4)
+            };
+            detailsLayout.Controls.Add(lblStatusColor, 0, 2);
+
+            // --- Status dropdown ---
+            cmbStatus = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 10f),
+                BackColor = Color.White
+            };
+            cmbStatus.Items.AddRange(new[] { "Pending", "In Progress", "Completed", "On Hold" });
+            cmbStatus.SelectedIndex = 0;
+            cmbStatus.SelectedIndexChanged += CmbStatus_SelectedIndexChanged;
+            detailsLayout.Controls.Add(cmbStatus, 0, 3);
 
             attachmentPanel = new FlowLayoutPanel
             {
@@ -213,6 +251,7 @@ namespace MunicipalServicesApp
             rightCard.Controls.Add(contentPanel);
             rightCard.Controls.Add(headerPanel);
 
+            /* ------------------------------ Graph Panel ----------------------------- */
             graphPanel = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -220,6 +259,11 @@ namespace MunicipalServicesApp
                 Visible = false
             };
             mainSplit.Controls.Add(graphPanel, 1, 0);
+
+            // ✅ Anti-flicker enhancement for graphs
+            typeof(Panel).GetProperty("DoubleBuffered",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.SetValue(graphPanel, true, null);
 
             lblNextUrgent = new Label
             {
@@ -231,9 +275,38 @@ namespace MunicipalServicesApp
             };
             root.Controls.Add(lblNextUrgent, 0, 2);
 
+            /* ------------------------- Final Data Preparation ----------------------- */
             ReloadDataAndBuildTree();
             BuildPriorityHeap();
+            UpdateNextUrgentLabel();
         }
+        // ===========================================================
+        // STATUS DROPDOWN HANDLER
+        // ===========================================================
+        private void CmbStatus_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (tvRequests.SelectedNode?.Tag is not Issue issue)
+                return;
+
+            issue.Status = cmbStatus.SelectedItem?.ToString() ?? "Pending";
+
+            // 🔹 Update the color label
+            lblStatusColor.Text = $"Status: {issue.Status}";
+            lblStatusColor.ForeColor = issue.Status switch
+            {
+                "Completed" => Color.ForestGreen,
+                "In Progress" => Color.DarkOrange,
+                "On Hold" => Color.MediumVioletRed,
+                _ => Color.DarkRed
+            };
+
+            // 🔹 Update the title text for feedback
+            lblDetailsTitle.Text = $"Ticket: {issue.TicketNumber} ({issue.Status})";
+
+            // 🔹 Rebuild TreeView colors dynamically
+            ReloadDataAndBuildTree();
+        }
+
 
         private Button CreateToolbarButton(string text, Color color)
         {
@@ -264,39 +337,111 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // Get distinct areas from the current issues
-            var availableAreas = allIssues.Select(i => i.Area).Distinct().ToArray();
-            string selectedArea = ShowAreaSelectionDialog(availableAreas);
-            if (string.IsNullOrEmpty(selectedArea)) return;
+            var availableAreas = allIssues
+                .Where(i => !string.IsNullOrWhiteSpace(i.Area))
+                .Select(i => i.Area)
+                .Distinct()
+                .ToArray();
 
-            // Filter issues for that area, sorted by urgency
-            var filteredIssues = allIssues
-                .Where(i => i.Area == selectedArea)
-                .OrderBy(i => i.Priority)
-                .ToList();
+            string selectedArea = ShowAreaSelectionDialog(availableAreas, includeAllOption: true);
+if (string.IsNullOrEmpty(selectedArea)) return;
 
-            if (filteredIssues.Count == 0)
+// If "All Areas" is selected, use allIssues; otherwise, filter
+var filtered = selectedArea == "All Areas"
+    ? allIssues.ToList()
+    : allIssues.Where(i => i.Area == selectedArea).ToList();
+
+
+            if (filtered.Count == 0)
             {
                 MessageBox.Show($"No service requests found for {selectedArea}.",
                     "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // Display the graph panel
+            // Count by category
+            var categoryCounts = filtered
+                .GroupBy(i => i.Category)
+                .ToDictionary(g => g.Key.ToString(), g => g.Count());
+
+            // Prepare graph panel
             rightCard.Visible = false;
             graphPanel.Visible = true;
             btnGraphDemo.Visible = false;
             btnBackToDetails.Visible = true;
 
-            // Pass the filtered issues and area into the ServiceGraph
-            var logic = new ServiceGraph();
-            logic.DemoGraphTraversal(filteredIssues, selectedArea);
+            // Unhook any old Paint events
+            if (graphPaintHandler != null)
+                graphPanel.Paint -= graphPaintHandler;
 
-            graphPanel.Paint += (s, ev) =>
+            graphPaintHandler = (s, ev) =>
             {
-                logic.DrawGraph(ev);
+                DrawCategoryBarGraph(ev.Graphics, categoryCounts, selectedArea);
             };
-            graphPanel.Refresh();
+            graphPanel.Paint += graphPaintHandler;
+            graphPanel.Invalidate();
+        }
+
+        private void DrawCategoryBarGraph(Graphics g, Dictionary<string, int> counts, string area)
+        {
+            g.Clear(Color.White);
+
+            using var fontTitle = new Font("Segoe UI Semibold", 14);
+            using var fontLabel = new Font("Segoe UI", 10);
+            var textBrush = Brushes.Black;
+            var barBrush = new SolidBrush(ThemeManager.EmeraldMid);
+
+            // Layout
+            int chartLeft = 70, chartTop = 80, chartHeight = 220, chartRightPadding = 30;
+            int n = Math.Max(1, counts.Count);
+            int plotWidth = graphPanel.ClientSize.Width - chartLeft - chartRightPadding;
+            int barWidth = Math.Max(28, (int)(plotWidth / (n * 1.8)));
+            int spacing = Math.Max(16, (int)(barWidth * 0.6));
+            int startX = chartLeft;
+
+            int maxVal = Math.Max(1, counts.Values.Max());
+
+            // Title
+            g.DrawString($"Service Requests by Category — {area}", fontTitle,
+                new SolidBrush(ThemeManager.EmeraldDark), new PointF(30, 30));
+
+            // Axis line (baseline)
+            using var axisPen = new Pen(Color.Gray, 1);
+            g.DrawLine(axisPen, chartLeft - 10, chartTop + chartHeight, chartLeft + plotWidth, chartTop + chartHeight);
+
+            // Bars
+            int x = startX;
+            foreach (var kv in counts.OrderBy(k => k.Key))
+            {
+                float h = (float)kv.Value / maxVal * chartHeight;
+                var bar = new Rectangle(x, (int)(chartTop + chartHeight - h), barWidth, (int)h);
+
+                g.FillRectangle(barBrush, bar);
+                g.DrawRectangle(Pens.DarkGray, bar);
+
+                // Value label
+                var valPt = new PointF(x + barWidth / 2f - 8, bar.Top - 18);
+                g.DrawString(kv.Value.ToString(), fontLabel, textBrush, valPt);
+
+                // Category label (vertical if needed)
+                var catText = kv.Key;
+                var labelPt = new PointF(x, chartTop + chartHeight + 6);
+                if (barWidth < 60 || catText.Length > 10)
+                {
+                    // rotate -45° for long labels
+                    var state = g.Save();
+                    g.TranslateTransform(labelPt.X + barWidth / 2f, labelPt.Y + 16);
+                    g.RotateTransform(-45);
+                    g.DrawString(catText, fontLabel, textBrush, new PointF(-barWidth / 2f, 0));
+                    g.Restore(state);
+                }
+                else
+                {
+                    g.DrawString(catText, fontLabel, textBrush, labelPt);
+                }
+
+                x += barWidth + spacing;
+            }
         }
 
         private void BtnBackToDetails_Click(object sender, EventArgs e)
@@ -305,7 +450,16 @@ namespace MunicipalServicesApp
             rightCard.Visible = true;
             btnBackToDetails.Visible = false;
             btnGraphDemo.Visible = true;
+
+            // detach paint handler
+            if (graphPaintHandler != null)
+            {
+                graphPanel.Paint -= graphPaintHandler;
+                graphPaintHandler = null;
+            }
+
         }
+
 
         private void BuildPriorityHeap()
         {
@@ -336,6 +490,14 @@ namespace MunicipalServicesApp
             priorityHeap.BuildHeap(allIssues);
         }
 
+        private void UpdateNextUrgentLabel()
+        {
+            var peek = priorityHeap?.Peek();
+            lblNextUrgent.Text = peek == null
+                ? "Next urgent request: (none)"
+                : $"Next urgent request: {peek.TicketNumber} ({peek.Category})";
+        }
+
         private void BtnUrgent_Click(object sender, EventArgs e)
         {
             if (priorityHeap == null)
@@ -351,7 +513,7 @@ namespace MunicipalServicesApp
                 lblNextUrgent.Text = "Next urgent request: (none)";
                 lblDetailsTitle.Text = "Request Details";
                 lblDetailsBody.Text = "No urgent requests available.";
-                if (attachmentPanel != null) attachmentPanel.Visible = false;
+                attachmentPanel.Visible = false;
                 return;
             }
 
@@ -365,7 +527,7 @@ namespace MunicipalServicesApp
                 lblNextUrgent.Text = "Next urgent request: (none)";
                 lblDetailsTitle.Text = "Request Details";
                 lblDetailsBody.Text = "No urgent requests available.";
-                if (attachmentPanel != null) attachmentPanel.Visible = false;
+                attachmentPanel.Visible = false;
                 return;
             }
 
@@ -378,21 +540,19 @@ namespace MunicipalServicesApp
                 $"Channel: {urgent.Channel}\n" +
                 $"Created: {urgent.CreatedAt:g}";
 
-            if (attachmentPanel != null)
-            {
-                if (urgent.AttachmentPaths == null)
-                    urgent.AttachmentPaths = new List<string>();
+            DisplayAttachments(urgent.AttachmentPaths);
+            UpdateNextUrgentLabel(); 
 
-                attachmentPanel.Visible = urgent.AttachmentPaths.Count > 0;
-            }
         }
 
         private void ReloadDataAndBuildTree()
         {
-            allIssues = IssueRepository.Issues.ToList();
+            allIssues = IssueRepository.Issues?.ToList() ?? new List<Issue>();
+
             bst = new ServiceRequestBST();
             foreach (var issue in allIssues)
                 bst.Insert(issue);
+
             var sorted = bst.GetInOrderList();
             RebuildTreeView(sorted, true);
         }
@@ -410,29 +570,33 @@ namespace MunicipalServicesApp
                 return;
             }
 
+            Color ColorFor(string status) => status switch
+            {
+                "Completed" => Color.ForestGreen,
+                "In Progress" => Color.DarkOrange,
+                "On Hold" => Color.MediumVioletRed,
+                _ => Color.DarkRed
+            };
+
+            TreeNode MakeIssueNode(Issue issue)
+            {
+                var node = new TreeNode($"{issue.TicketNumber} — {issue.Location} [{issue.Status}]") { Tag = issue };
+                node.ForeColor = ColorFor(issue.Status ?? "Pending");
+                return node;
+            }
+
             if (groupByCategory)
             {
                 foreach (var group in list.GroupBy(i => i.Category))
                 {
-                    var catNode = new TreeNode(group.Key.ToString())
-                    {
-                        ForeColor = ThemeManager.EmeraldDark
-                    };
-
-                    foreach (var issue in group)
-                        catNode.Nodes.Add(
-                            new TreeNode($"{issue.TicketNumber} — {issue.Location}")
-                            { Tag = issue });
-
+                    var catNode = new TreeNode(group.Key.ToString()) { ForeColor = ThemeManager.EmeraldDark };
+                    foreach (var issue in group) catNode.Nodes.Add(MakeIssueNode(issue));
                     tvRequests.Nodes.Add(catNode);
                 }
             }
             else
             {
-                foreach (var issue in list)
-                    tvRequests.Nodes.Add(
-                        new TreeNode($"{issue.TicketNumber} — {issue.Location}")
-                        { Tag = issue });
+                foreach (var issue in list) tvRequests.Nodes.Add(MakeIssueNode(issue));
             }
 
             tvRequests.ExpandAll();
@@ -473,6 +637,7 @@ namespace MunicipalServicesApp
         {
             ReloadDataAndBuildTree();
             BuildPriorityHeap();
+            UpdateNextUrgentLabel();
             MessageBox.Show("Service requests refreshed.", "Updated",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -481,6 +646,7 @@ namespace MunicipalServicesApp
         {
             if (e.Node?.Tag is not Issue issue) return;
 
+            // --- Display request details ---
             lblDetailsTitle.Text = $"Ticket: {issue.TicketNumber}";
             lblDetailsBody.Text =
                 $"Category: {issue.Category}\n" +
@@ -488,60 +654,145 @@ namespace MunicipalServicesApp
                 $"Description:\n{issue.Description}\n\n" +
                 $"Channel: {issue.Channel}\n" +
                 $"Created: {issue.CreatedAt:g}";
+
+            // --- Display attachments safely ---
+            DisplayAttachments(issue.AttachmentPaths ?? new List<string>());
+
+            // --- Ensure issue.Status always has a value ---
+            if (string.IsNullOrWhiteSpace(issue.Status))
+                issue.Status = "Pending";
+
+            // --- Sync dropdown selection safely ---
+            if (cmbStatus.Items.Contains(issue.Status))
+                cmbStatus.SelectedItem = issue.Status;
+            else
+                cmbStatus.SelectedIndex = 0;
+
+            // --- Update color-coded status label ---
+            lblStatusColor.Text = $"Status: {issue.Status}";
+            lblStatusColor.ForeColor = issue.Status switch
+            {
+                "Completed" => Color.ForestGreen,
+                "In Progress" => Color.DarkOrange,
+                "On Hold" => Color.MediumVioletRed,
+                _ => Color.DarkRed
+            };
         }
-        private string ShowAreaSelectionDialog(string[] availableAreas)
+
+
+        private void DisplayAttachments(List<string> paths)
         {
-            if (availableAreas == null || availableAreas.Length == 0)
+            attachmentPanel.Controls.Clear();
+
+            var list = paths ?? new List<string>();
+            if (list.Count == 0)
             {
-                MessageBox.Show("No areas found in the current issues.",
-                    "No Areas", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return string.Empty;
+                attachmentPanel.Visible = false;
+                return;
             }
 
-            using (var form = new Form())
+            foreach (var p in list)
             {
-                form.Text = "Select Service Area";
-                form.StartPosition = FormStartPosition.CenterParent;
-                form.ClientSize = new Size(300, 150);
-                form.FormBorderStyle = FormBorderStyle.FixedDialog;
-                form.MaximizeBox = false;
-                form.MinimizeBox = false;
-
-                var label = new Label
+                var fileName = SafeFileName(p);
+                var btn = new Button
                 {
-                    Text = "Choose a service area to optimise route for:",
-                    Dock = DockStyle.Top,
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Padding = new Padding(0, 15, 0, 10)
+                    Text = fileName,
+                    AutoSize = true,
+                    Padding = new Padding(8, 4, 8, 4),
+                    Margin = new Padding(6),
+                    BackColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
+                };
+                btn.FlatAppearance.BorderSize = 1;
+                btn.FlatAppearance.BorderColor = Color.Gainsboro;
+
+                btn.Click += (_, __) =>
+                {
+                    try
+                    {
+                        if (File.Exists(p))
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = p,
+                                UseShellExecute = true
+                            });
+                        else
+                            MessageBox.Show("File not found: " + p, "Open Attachment",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("Unable to open: " + p, "Open Attachment",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 };
 
-                var combo = new ComboBox
-                {
-                    Dock = DockStyle.Top,
-                    DropDownStyle = ComboBoxStyle.DropDownList
-                };
-                combo.Items.AddRange(availableAreas);
-                combo.SelectedIndex = 0;
-
-                var ok = new Button
-                {
-                    Text = "OK",
-                    Dock = DockStyle.Bottom,
-                    DialogResult = DialogResult.OK
-                };
-
-                form.Controls.Add(ok);
-                form.Controls.Add(combo);
-                form.Controls.Add(label);
-
-                form.AcceptButton = ok;
-
-                return form.ShowDialog() == DialogResult.OK
-                    ? combo.SelectedItem.ToString()
-                    : string.Empty;
+                attachmentPanel.Controls.Add(btn);
             }
+
+            attachmentPanel.Visible = true;
         }
 
+        private static string SafeFileName(string path)
+        {
+            try { return Path.GetFileName(path); }
+            catch { return path ?? ""; }
+        }
+
+private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllOption = false)
+{
+    if (availableAreas == null || availableAreas.Length == 0)
+    {
+        MessageBox.Show("No areas found in the current issues.",
+            "No Areas", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        return string.Empty;
     }
 
+    using (var form = new Form())
+    {
+        form.Text = "Select Service Area";
+        form.StartPosition = FormStartPosition.CenterParent;
+        form.ClientSize = new Size(300, 150);
+        form.FormBorderStyle = FormBorderStyle.FixedDialog;
+        form.MaximizeBox = false;
+        form.MinimizeBox = false;
+
+        var label = new Label
+        {
+            Text = "Choose a service area to analyse:",
+            Dock = DockStyle.Top,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Padding = new Padding(0, 15, 0, 10)
+        };
+
+        var combo = new ComboBox
+        {
+            Dock = DockStyle.Top,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+
+        if (includeAllOption)
+            combo.Items.Add("All Areas");
+
+        combo.Items.AddRange(availableAreas);
+        combo.SelectedIndex = 0;
+
+        var ok = new Button
+        {
+            Text = "OK",
+            Dock = DockStyle.Bottom,
+            DialogResult = DialogResult.OK
+        };
+
+        form.Controls.Add(ok);
+        form.Controls.Add(combo);
+        form.Controls.Add(label);
+        form.AcceptButton = ok;
+
+        return form.ShowDialog() == DialogResult.OK
+            ? combo.SelectedItem?.ToString() ?? string.Empty
+            : string.Empty;
+    }
+}
+    }
 }

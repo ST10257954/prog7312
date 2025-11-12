@@ -26,6 +26,8 @@ namespace MunicipalServicesApp.Models
         public string AttachmentPath { get; set; }  // File path or URL of uploaded attachment
 
         public string Area { get; set; } = "Ward A";
+        public string Status { get; set; } = "Pending";
+
 
 
     }

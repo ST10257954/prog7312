@@ -12,11 +12,11 @@ namespace MunicipalServicesApp
     {
         // Core data structures
         private readonly SortedDictionary<DateTime, List<Event>> eventsByDate = new();
-        private readonly Queue<string> searchHistory = new();
-        private readonly Stack<Event> recentlyViewed = new();
+        private readonly Queue<string> searchHistory = new();     // last 5 searches
+        private readonly Stack<Event> recentlyViewed = new();     // recently viewed events
         private readonly HashSet<string> uniqueCategories = new();
 
-        // Save/Load search history file
+        // Persistent search history file
         private readonly string historyFile = "searchHistory.txt";
 
         public EventsForm()
@@ -27,10 +27,11 @@ namespace MunicipalServicesApp
 
         private void EventsForm_Load(object sender, EventArgs e)
         {
-            // Load previous search history
+            // Load previous user behaviour
             LoadSearchHistory();
 
-            // Demo data
+            // ------------------------------------------------------------------
+            // Demo data (representing events retrieved from backend)
             AddEvent("Heritage Day Celebration", new DateTime(2025, 9, 24), "Cultural", "Parade and food market.");
             AddEvent("Heritage Business Expo", new DateTime(2025, 10, 25), "Business", "Support local businesses.");
             AddEvent("Job Fair", new DateTime(2025, 10, 28), "Employment", "Meet local companies hiring youth.");
@@ -41,24 +42,30 @@ namespace MunicipalServicesApp
             AddEvent("Sports Day at the Stadium", new DateTime(2025, 11, 22), "Sports", "Family-friendly sports day.");
             AddEvent("Holiday Food Drive", new DateTime(2025, 12, 5), "Charity", "Donate food & support families.");
             AddEvent("Art in the Park", new DateTime(2025, 12, 10), "Arts", "Outdoor art exhibition & workshops.");
+            // ------------------------------------------------------------------
 
-            // Set DataGridView column sizing and events
+            // DataGridView setup
             dgvEvents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvEvents.CellClick += DgvEvents_CellClick;
-            txtSearch.Enter += TxtSearch_Enter;
 
-            // Allow Enter key to trigger Search
+            // Enter key triggers Search
             this.AcceptButton = btnSearch;
 
+            // Display initial view
             DisplayEvents();
             btnShowAll.Visible = false;
 
-            // Improve recommendation text appearance
-            lblRecommendations.AutoEllipsis = false;
-            lblRecommendations.MaximumSize = new Size(820, 0);
+            // Label styling polish
             lblRecommendations.AutoSize = true;
+            lblRecommendations.MaximumSize = new Size(820, 0);
+            lblRecommendations.TextAlign = ContentAlignment.TopLeft;
+            lblRecommendations.Visible = false;
+
+            txtSearch.Enter += TxtSearch_Enter;
         }
 
+        // ----------------------------------------------------------------------
+        // Event creation helper
         private void AddEvent(string title, DateTime date, string category, string description)
         {
             if (!eventsByDate.ContainsKey(date))
@@ -68,18 +75,22 @@ namespace MunicipalServicesApp
             uniqueCategories.Add(category);
         }
 
+        // ----------------------------------------------------------------------
+        // Display all or filtered events
         private void DisplayEvents(List<Event>? list = null)
         {
             dgvEvents.Rows.Clear();
-            var display = list ?? eventsByDate.SelectMany(kv => kv.Value);
 
-            foreach (var ev in display)
+            var displayList = list ?? eventsByDate.SelectMany(kv => kv.Value);
+            foreach (var ev in displayList)
                 dgvEvents.Rows.Add(ev.Title, ev.Date.ToShortDateString(), ev.Category, ev.Description);
 
-            lblRecommendations.Text = list == null ? "Showing all events." : "Filtered results displayed below.";
             lblRecommendations.Visible = list != null;
+            lblRecommendations.Text = list == null ? "Showing all events." : "Filtered results displayed below.";
         }
 
+        // ----------------------------------------------------------------------
+        // SEARCH FUNCTION
         private void btnSearch_Click(object sender, EventArgs e)
         {
             string keyword = txtSearch.Text.Trim().ToLower();
@@ -90,15 +101,20 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // Maintain last 5 searches
+            // Maintain only 5 most recent searches
             if (searchHistory.Count >= 5)
                 searchHistory.Dequeue();
             searchHistory.Enqueue(keyword);
             SaveSearchHistory();
 
-            txtSearch.AutoCompleteCustomSource = new AutoCompleteStringCollection();
-            txtSearch.AutoCompleteCustomSource.AddRange(searchHistory.Reverse().ToArray());
+            // Update AutoComplete source
+            var src = new AutoCompleteStringCollection();
+            src.AddRange(searchHistory.Reverse().ToArray());
+            txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            txtSearch.AutoCompleteCustomSource = src;
 
+            // Perform the search
             var results = eventsByDate
                 .SelectMany(kv => kv.Value)
                 .Where(ev => ev.Title.ToLower().Contains(keyword)
@@ -114,6 +130,7 @@ namespace MunicipalServicesApp
                 return;
             }
 
+            // Track user behaviour
             foreach (var ev in results)
                 recentlyViewed.Push(ev);
 
@@ -125,9 +142,10 @@ namespace MunicipalServicesApp
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        // ----------------------------------------------------------------------
+        // SHOW ALL EVENTS (Reset)
         private void btnShowAll_Click(object sender, EventArgs e)
         {
-            // Reset everything to default
             txtSearch.Clear();
             recentlyViewed.Clear();
             lblRecommendations.Visible = false;
@@ -135,10 +153,13 @@ namespace MunicipalServicesApp
             btnShowAll.Visible = false;
         }
 
+        // ----------------------------------------------------------------------
+        // RECOMMENDATION ENGINE
         private void GenerateRecommendations(string keyword, List<Event> currentResults)
         {
             var allEvents = eventsByDate.SelectMany(kv => kv.Value).ToList();
 
+            // Find main category among current results
             string? mainCategory = currentResults
                 .GroupBy(e => e.Category)
                 .OrderByDescending(g => g.Count())
@@ -156,6 +177,7 @@ namespace MunicipalServicesApp
                     .ToList();
             }
 
+            // Add keyword matches if needed
             if (related.Count < 3)
             {
                 var keywordMatches = allEvents
@@ -169,6 +191,7 @@ namespace MunicipalServicesApp
                 related.AddRange(keywordMatches);
             }
 
+            // Add trending searches
             var frequentTerm = searchHistory.GroupBy(s => s)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
@@ -185,10 +208,13 @@ namespace MunicipalServicesApp
                 related.AddRange(trending);
             }
 
-            var recText = related.Count == 0
+            // Build recommendation message
+            string recText = related.Count == 0
                 ? "You might also like:\nNo other related events found."
-                : "You might also like:\n" + string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
+                : "You might also like:\n" +
+                  string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
 
+            // Add recently viewed items
             if (recentlyViewed.Count > 0)
             {
                 var recent = recentlyViewed.Take(3)
@@ -200,6 +226,8 @@ namespace MunicipalServicesApp
             lblRecommendations.Visible = true;
         }
 
+        // ----------------------------------------------------------------------
+        // Event click handler
         private void DgvEvents_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && e.RowIndex < dgvEvents.Rows.Count)
@@ -216,26 +244,24 @@ namespace MunicipalServicesApp
             }
         }
 
+        // ----------------------------------------------------------------------
+        // Search bar autocomplete
         private void TxtSearch_Enter(object sender, EventArgs e)
         {
             if (searchHistory.Count == 0) return;
 
-            txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-            txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
-
             var autoComplete = new AutoCompleteStringCollection();
             autoComplete.AddRange(searchHistory.Reverse().ToArray());
+            txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
             txtSearch.AutoCompleteCustomSource = autoComplete;
         }
 
-        // --- Save & Load search history ---
+        // ----------------------------------------------------------------------
+        // Save & load user search behaviour
         private void SaveSearchHistory()
         {
-            try
-            {
-                File.WriteAllLines(historyFile, searchHistory);
-            }
-            catch { }
+            try { File.WriteAllLines(historyFile, searchHistory); } catch { }
         }
 
         private void LoadSearchHistory()
@@ -252,6 +278,7 @@ namespace MunicipalServicesApp
             catch { }
         }
 
+        // Navigation back to main menu
         private void btnBack_Click(object sender, EventArgs e)
         {
             this.Hide();

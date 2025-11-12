@@ -40,12 +40,21 @@ namespace MunicipalServicesApp
 
         private void BuildUi()
         {
+            // -----------------------------------------------------------
+            // BASIC FORM SETTINGS
+            // -----------------------------------------------------------
             Text = "Report an Issue";
             StartPosition = FormStartPosition.CenterParent;
             ClientSize = new Size(1060, 640);
             BackColor = SurfaceAlt;
             Font = new Font("Segoe UI", 10.5f);
+            DoubleBuffered = true;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            MaximizeBox = false;
 
+            // -----------------------------------------------------------
+            // MAIN LAYOUT CONTAINER
+            // -----------------------------------------------------------
             var root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -53,14 +62,22 @@ namespace MunicipalServicesApp
                 RowCount = 4,
                 Padding = new Padding(20, 16, 20, 16)
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));     // Header
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));     // Content
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));     // Footer buttons
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));     // Status bar
             Controls.Add(root);
 
-            // Header
+            // -----------------------------------------------------------
+            // HEADER SECTION
+            // -----------------------------------------------------------
             var header = new Panel { BackColor = AccentDark, Dock = DockStyle.Fill };
+            header.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Color.FromArgb(200, 200, 200));
+                e.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
+            };
+
             var headerLbl = new Label
             {
                 Text = "Municipal Services — Report an Issue",
@@ -73,17 +90,20 @@ namespace MunicipalServicesApp
             header.Controls.Add(headerLbl);
             root.Controls.Add(header, 0, 0);
 
-            // Main content
+            // -----------------------------------------------------------
+            // MAIN CONTENT AREA (Top + Bottom Cards)
+            // -----------------------------------------------------------
             var content = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2
             };
-            content.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
-            content.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
+            content.RowStyles.Add(new RowStyle(SizeType.Percent, 60));  // Issue details + engagement
+            content.RowStyles.Add(new RowStyle(SizeType.Percent, 40));  // Attachments
             root.Controls.Add(content, 0, 1);
 
+            // Top Card (Issue Details + Engagement)
             var cardTop = MakeCard();
             content.Controls.Add(cardTop, 0, 0);
 
@@ -96,7 +116,9 @@ namespace MunicipalServicesApp
             topGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
             cardTop.Controls.Add(topGrid);
 
-            // LEFT — Issue details
+            // -----------------------------------------------------------
+            // LEFT SIDE: ISSUE DETAILS
+            // -----------------------------------------------------------
             var details = MakeCard(innerPadding: 16);
             topGrid.Controls.Add(details, 0, 0);
 
@@ -114,11 +136,13 @@ namespace MunicipalServicesApp
             detailsGrid.Controls.Add(MakeSectionTitle("Issue details"), 0, 0);
             detailsGrid.SetColumnSpan(detailsGrid.GetControlFromPosition(0, 0), 2);
 
+            // Address field
             detailsGrid.Controls.Add(MakeLabel("Address:"), 0, 1);
             txtLocation = new TextBox { Dock = DockStyle.Fill };
             txtLocation.TextChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(txtLocation, 1, 1);
 
+            // Service area selection
             detailsGrid.Controls.Add(MakeLabel("Service Area:"), 0, 2);
             cmbArea = new ComboBox
             {
@@ -129,6 +153,7 @@ namespace MunicipalServicesApp
             cmbArea.SelectedIndex = 0;
             detailsGrid.Controls.Add(cmbArea, 1, 2);
 
+            // Category selection
             detailsGrid.Controls.Add(MakeLabel("Category:"), 0, 3);
             cmbCategory = new ComboBox
             {
@@ -139,12 +164,15 @@ namespace MunicipalServicesApp
             cmbCategory.SelectedIndexChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(cmbCategory, 1, 3);
 
+            // Description field
             detailsGrid.Controls.Add(MakeLabel("Description:"), 0, 4);
             rtbDescription = new RichTextBox { Dock = DockStyle.Fill };
             rtbDescription.TextChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(rtbDescription, 1, 4);
 
-            // RIGHT — Modes & Engagement
+            // -----------------------------------------------------------
+            // RIGHT SIDE: MODES & ENGAGEMENT
+            // -----------------------------------------------------------
             var modes = MakeCard(innerPadding: 16);
             topGrid.Controls.Add(modes, 1, 0);
 
@@ -159,6 +187,7 @@ namespace MunicipalServicesApp
 
             modesGrid.Controls.Add(MakeSectionTitle("Modes & Engagement"), 0, 0);
 
+            // Checkboxes: Data Saver + Offline Mode
             var toggleRow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -193,7 +222,9 @@ namespace MunicipalServicesApp
             };
             modesGrid.Controls.Add(progress, 0, 5);
 
-            // BOTTOM — Attachments
+            // -----------------------------------------------------------
+            // ATTACHMENTS SECTION (BOTTOM CARD)
+            // -----------------------------------------------------------
             var cardBottom = MakeCard();
             content.Controls.Add(cardBottom, 0, 1);
 
@@ -227,7 +258,9 @@ namespace MunicipalServicesApp
             attachGrid.Controls.Add(lstAttachments, 1, 1);
             attachGrid.SetRowSpan(lstAttachments, 2);
 
-            // Footer
+            // -----------------------------------------------------------
+            // FOOTER BUTTONS
+            // -----------------------------------------------------------
             var footer = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -236,8 +269,14 @@ namespace MunicipalServicesApp
             };
             root.Controls.Add(footer, 0, 2);
 
-            btnBack = Ghost("Back");
-            btnBack.Click += (_, __) => Close();
+            btnBack = Ghost("Back to Main Menu");
+            btnBack.Click += (_, __) =>
+            {
+                this.Hide();
+                var main = new MainMenuForm();
+                main.ShowDialog();
+                this.Close();
+            };
 
             btnExport = Ghost("Export Pending");
             btnCopySms = Ghost("Copy SMS Text");
@@ -247,7 +286,9 @@ namespace MunicipalServicesApp
 
             footer.Controls.AddRange(new Control[] { btnBack, btnExport, btnCopySms, btnSubmit });
 
-            // Status bar
+            // -----------------------------------------------------------
+            // STATUS BAR
+            // -----------------------------------------------------------
             status = new StatusStrip { SizingGrip = false, BackColor = Surface };
             statusMode = new ToolStripStatusLabel("Online");
             statusDataSaver = new ToolStripStatusLabel("Data saver: On") { ForeColor = Muted };
@@ -256,7 +297,31 @@ namespace MunicipalServicesApp
             status.Items.Add(statusDataSaver);
             root.Controls.Add(status, 0, 3);
 
-            // Initial setup
+            // -----------------------------------------------------------
+            // EVENT HANDLERS TO RESET HIGHLIGHT COLORS AFTER VALIDATION
+            // -----------------------------------------------------------
+            txtLocation.TextChanged += (_, __) =>
+            {
+                if (!string.IsNullOrWhiteSpace(txtLocation.Text))
+                    txtLocation.BackColor = Color.White;
+            };
+
+            cmbCategory.SelectedIndexChanged += (_, __) =>
+            {
+                if (cmbCategory.SelectedIndex != -1)
+                    cmbCategory.BackColor = Color.White;
+            };
+
+            rtbDescription.TextChanged += (_, __) =>
+            {
+                if (!string.IsNullOrWhiteSpace(rtbDescription.Text))
+                    rtbDescription.BackColor = Color.White;
+            };
+
+            // -----------------------------------------------------------
+            // DEFAULT SETUP
+            // -----------------------------------------------------------
+            AcceptButton = btnSubmit;  // Pressing Enter triggers Submit
             ToggleForDataSaver();
             UpdateEngagement();
             UpdateEstimate();
@@ -299,19 +364,38 @@ namespace MunicipalServicesApp
         private void UpdateEngagement()
         {
             int p = 0;
+
+            // Calculate completion progress
             if (!string.IsNullOrWhiteSpace(txtLocation.Text)) p += 25;
             if (cmbCategory.SelectedItem != null) p += 25;
             if (!string.IsNullOrWhiteSpace(rtbDescription.Text)) p += 25;
             if (lstAttachments.Items.Count > 0 && btnAddAttachment.Enabled) p += 25;
 
             progress.Value = p;
-            lblEngagement.Text =
-                p < 25 ? "Step 1: Add your location to help teams find the issue." :
-                p < 50 ? "Good! Now choose a category." :
-                p < 75 ? "Almost done. Add a short description." :
-                p < 100 ? "Optional: Add photos or documents to help staff." :
-                          "All set! Press Submit to generate your ticket.";
+
+            // Display correct guidance message based on what’s missing
+            if (string.IsNullOrWhiteSpace(txtLocation.Text))
+            {
+                lblEngagement.Text = "Step 1: Add your location to help teams find the issue.";
+            }
+            else if (cmbCategory.SelectedItem == null)
+            {
+                lblEngagement.Text = "Step 2: Choose a category that best describes the issue.";
+            }
+            else if (string.IsNullOrWhiteSpace(rtbDescription.Text))
+            {
+                lblEngagement.Text = "Step 3: Add a short description of the issue.";
+            }
+            else if (lstAttachments.Items.Count == 0 && btnAddAttachment.Enabled)
+            {
+                lblEngagement.Text = "Step 4 (optional): Add photo attachments for better detail.";
+            }
+            else
+            {
+                lblEngagement.Text = "All set! Press Submit to generate your ticket.";
+            }
         }
+
 
         private void UpdateEstimate()
         {
@@ -347,12 +431,34 @@ namespace MunicipalServicesApp
 
         private void BtnSubmit_Click(object sender, EventArgs e)
         {
+            // --- VALIDATION SECTION ---
             if (string.IsNullOrWhiteSpace(txtLocation.Text))
             {
+                txtLocation.BackColor = Color.MistyRose;
                 MessageBox.Show("Please enter the location.", "Missing information", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtLocation.Focus();
                 return;
             }
 
+            if (cmbCategory.SelectedIndex == -1)
+            {
+                cmbCategory.BackColor = Color.MistyRose;
+                MessageBox.Show("Please select a category for the issue.",
+                    "Missing Information", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                cmbCategory.Focus();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(rtbDescription.Text))
+            {
+                rtbDescription.BackColor = Color.MistyRose;
+                MessageBox.Show("Please enter a short description of the issue.",
+                    "Missing Information", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                rtbDescription.Focus();
+                return;
+            }
+
+            // --- CREATE NEW ISSUE OBJECT ---
             var issue = new Issue
             {
                 TicketNumber = $"MS-{Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper()}",
@@ -366,11 +472,14 @@ namespace MunicipalServicesApp
 
             IssueRepository.Issues.Add(issue);
 
-            MessageBox.Show($"Submitted!\nTicket: {issue.TicketNumber}\nCategory: {issue.Category}\nLocation: {issue.Location}",
+            // --- SUCCESS MESSAGE ---
+            MessageBox.Show(
+                $"Submitted!\nTicket: {issue.TicketNumber}\nCategory: {issue.Category}\nLocation: {issue.Location}",
                 "Report Sent", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             ClearForm();
         }
+
 
         private void ClearForm()
         {
