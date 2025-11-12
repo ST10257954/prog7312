@@ -470,7 +470,7 @@ namespace MunicipalServicesApp
                 CreatedAt = DateTime.Now
             };
 
-            IssueRepository.Issues.Add(issue);
+            IssueRepository.AddIssue(issue);
 
             // --- SUCCESS MESSAGE ---
             MessageBox.Show(

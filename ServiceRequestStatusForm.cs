@@ -92,7 +92,7 @@ namespace MunicipalServicesApp
             btnRefresh = CreateToolbarButton("Refresh", ThemeManager.EmeraldMid);
             btnBack = CreateToolbarButton("Back", ThemeManager.MutedGrey);
             btnUrgent = CreateToolbarButton("Show Next Urgent", ThemeManager.EmeraldDark);
-            btnGraphDemo = CreateToolbarButton("Route Optimiser", ThemeManager.EmeraldMid);
+            btnGraphDemo = CreateToolbarButton("Analyse requests", ThemeManager.EmeraldMid);
             btnBackToDetails = CreateToolbarButton("Back to Details", ThemeManager.MutedGrey);
             btnBackToDetails.Visible = false;
 
@@ -359,10 +359,12 @@ var filtered = selectedArea == "All Areas"
                 return;
             }
 
-            // Count by category
-            var categoryCounts = filtered
-                .GroupBy(i => i.Category)
-                .ToDictionary(g => g.Key.ToString(), g => g.Count());
+            // Count by category — ensure every category appears, even if count = 0
+            var categoryCounts = Enum.GetValues(typeof(IssueCategory))
+                .Cast<IssueCategory>()
+                .ToDictionary(cat => cat.ToString(),
+                              cat => filtered.Count(i => i.Category == cat));
+
 
             // Prepare graph panel
             rightCard.Visible = false;

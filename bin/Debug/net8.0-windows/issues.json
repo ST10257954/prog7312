@@ -1,0 +1,58 @@
+[
+  {
+    "TicketNumber": "MS-A9CE34EF",
+    "Location": "Main Street 12",
+    "Category": 0,
+    "Description": "Burst water pipe flooding road.",
+    "AttachmentPaths": [],
+    "SubmittedAt": "2025-11-12T14:14:26.3964211+02:00",
+    "Channel": "LowData",
+    "CreatedAt": "2025-11-12T14:14:26.4324182+02:00",
+    "Priority": 3,
+    "AttachmentPath": null,
+    "Area": "Ward A",
+    "Status": "Pending"
+  },
+  {
+    "TicketNumber": "MS-FC035614",
+    "Location": "Oak Avenue 45",
+    "Category": 2,
+    "Description": "Streetlights not working at night.",
+    "AttachmentPaths": [],
+    "SubmittedAt": "2025-11-12T14:14:40.5782535+02:00",
+    "Channel": "LowData",
+    "CreatedAt": "2025-11-12T14:14:40.5783915+02:00",
+    "Priority": 3,
+    "AttachmentPath": null,
+    "Area": "Ward A",
+    "Status": "Pending"
+  },
+  {
+    "TicketNumber": "MS-0B9D0B4B",
+    "Location": "Market Road 5",
+    "Category": 1,
+    "Description": "Overfilled waste bins causing odour.",
+    "AttachmentPaths": [],
+    "SubmittedAt": "2025-11-12T14:15:10.8217327+02:00",
+    "Channel": "LowData",
+    "CreatedAt": "2025-11-12T14:15:10.8218031+02:00",
+    "Priority": 3,
+    "AttachmentPath": null,
+    "Area": "Ward B",
+    "Status": "Pending"
+  },
+  {
+    "TicketNumber": "MS-36471F90",
+    "Location": "Riverside Lane 9",
+    "Category": 3,
+    "Description": "Deep potholes causing traffic delays",
+    "AttachmentPaths": [],
+    "SubmittedAt": "2025-11-12T14:15:52.4087951+02:00",
+    "Channel": "LowData",
+    "CreatedAt": "2025-11-12T14:15:52.4088221+02:00",
+    "Priority": 3,
+    "AttachmentPath": null,
+    "Area": "Ward C",
+    "Status": "Pending"
+  }
+]
