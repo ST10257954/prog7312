@@ -10,25 +10,35 @@ using MunicipalServicesApp.Models;
 
 namespace MunicipalServicesApp.Data
 {
+    /*<summary>
+    Handles all offline data management, file compression, and export functions.
+    Used when the application operates without network connectivity.
+    Provides lightweight JSON/CSV backups and image compression for pending reports.
+    */
     public static class DataSaverService
     {
+
+        // Indicates if data saving features are active
         public static bool DataSaverEnabled { get; set; } = true;
+
+        // Indicates whether app is running in offline mode
         public static bool OfflineMode { get; set; } = false;
 
-        // Offline queue  (microsoft, 2025).
+        // Queue of issues waiting to be synced when offline (Microsoft, 2025)
         public static readonly List<Issue> Pending = new();
 
-        // Rough size estimate for UI feedback
+
+        // Estimates the file size of an issue (optionally after image compression)
         public static long EstimateBytes(Issue issue, bool afterCompression)
         {
             long bytes = 0;
 
-            // text
+            // Calculate text size
             bytes += Encoding.UTF8.GetByteCount(issue.Location ?? "");
             bytes += Encoding.UTF8.GetByteCount(issue.Description ?? "");
             bytes += Encoding.UTF8.GetByteCount((issue.Category).ToString());
 
-            // attachments
+            // Include attachments
             foreach (var p in issue.AttachmentPaths ?? Enumerable.Empty<string>())
             {
                 try
@@ -47,13 +57,15 @@ namespace MunicipalServicesApp.Data
             return bytes;
         }
 
+
+        // Checks if a given file path points to an image file
         public static bool IsImage(string path)
         {
             var ext = Path.GetExtension(path)?.ToLowerInvariant();
             return ext is ".jpg" or ".jpeg" or ".png" or ".bmp";
         }
 
-        // Downscale + JPEG re-encode  (Microsoft, 2025)
+        /// Compresses and resizes an image for offline saving to reduce storage (Microsoft, 2025)
         public static string CompressImageFile(string inputPath, string outputDir, int maxWidth = 1024, long quality = 55L)
         {
             Directory.CreateDirectory(outputDir);
@@ -85,7 +97,7 @@ namespace MunicipalServicesApp.Data
             return outPath;
         }
 
-        // Compact, SMS-friendly body  (Microsoft, 2025)
+        /// Builds a short, SMS-friendly text message version of a service issue (Microsoft, 2025)
         public static string BuildCompactSms(Issue issue)
         {
             string desc = (issue.Description ?? "").Replace("\r", " ").Replace("\n", " ");
@@ -95,14 +107,20 @@ namespace MunicipalServicesApp.Data
             return s;
         }
 
+
+        // Adds an issue to the offline queue for later syncing.
         public static void QueueForLater(Issue issue) => Pending.Add(issue);
 
+
+        /// Exports all pending issues to a JSON file for data recovery or backup.
         public static void ExportPendingToJson(string path)
         {
             var json = JsonSerializer.Serialize(Pending, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(path, json);
         }
 
+
+        // Exports all pending issues to a CSV file for external viewing.
         public static void ExportPendingToCsv(string path)
         {
             var sb = new StringBuilder();

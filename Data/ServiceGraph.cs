@@ -7,14 +7,24 @@ using MunicipalServicesApp.Models;
 
 namespace MunicipalServicesApp.Data
 {
+
+    /*
+    Represents a weighted, undirected graph showing how service areas (wards)
+    are connected for route planning. Used to visualise travel paths, perform
+    traversals, and compute minimum-cost inspection routes.
+    */
     public class ServiceGraph
     {
+
+        // Stores each node and its connected edges with distances (weights)
         private readonly Dictionary<string, List<(string dest, int weight)>> adjacencyList = new();
+
+        // Records the most recent traversal path for visual highlighting
         private List<string> traversalOrder = new();
 
-        // ================================================================
-        // BASIC EDGE MANAGEMENT
-        // ================================================================
+
+        /* Add a connection between two service areas with a travel cost.
+        This models how wards or depots are physically linked.*/
         public void AddEdge(string src, string dest, int weight = 1)
         {
             if (!adjacencyList.ContainsKey(src)) adjacencyList[src] = new List<(string, int)>();
@@ -23,9 +33,9 @@ namespace MunicipalServicesApp.Data
             adjacencyList[dest].Add((src, weight));
         }
 
-        // ================================================================
-        // BFS TRAVERSAL
-        // ================================================================
+        /* Traverse all connected areas starting from one ward to identify
+           reachable routes. BFS is used because it finds the shortest path
+           (fewest hops) from the starting node to others (geeksforgeeks, 2025).*/
         public List<string> BFS(string start)
         {
             var visited = new HashSet<string>();
@@ -41,6 +51,8 @@ namespace MunicipalServicesApp.Data
             {
                 var current = queue.Dequeue();
                 order.Add(current);
+
+                // Visit each neighbouring ward to explore reachable routes
                 foreach (var (neighbor, _) in adjacencyList[current])
                 {
                     if (!visited.Contains(neighbor))
@@ -53,17 +65,17 @@ namespace MunicipalServicesApp.Data
             return order;
         }
 
-        // ================================================================
-        // PRIM'S ALGORITHM – MINIMUM SPANNING TREE (REAL DATA)
-        // ================================================================
+        /* PRIM'S ALGORITHM – MINIMUM SPANNING TREE
+           Compute the cheapest set of connections that links all wards.
+           This helps the municipality plan inspection routes efficiently.*/
+
         public (List<(string From, string To, int Weight)> Edges, int TotalCost)
             ComputeMST_Prim(string start)
         {
-            // ✅ Named tuple fields defined correctly here
             var mstEdges = new List<(string From, string To, int Weight)>();
             var visited = new HashSet<string>();
 
-            // SortedSet comparer using tuple positions (Item1, Item2, Item3)
+            // Priority queue holds edges sorted by weight (smallest first)
             var pq = new SortedSet<(int, string, string)>(
                 Comparer<(int, string, string)>.Create((a, b) =>
                 {
@@ -76,11 +88,14 @@ namespace MunicipalServicesApp.Data
                 return (new List<(string From, string To, int Weight)>(), 0);
 
             visited.Add(start);
+
+            // Begin with all edges from the starting ward
             foreach (var (dest, weight) in adjacencyList[start])
                 pq.Add((weight, start, dest));
 
             int totalCost = 0;
 
+            // Select the smallest edge that connects to a new ward
             while (pq.Count > 0 && visited.Count < adjacencyList.Count)
             {
                 var (weight, from, to) = pq.Min;
@@ -92,6 +107,7 @@ namespace MunicipalServicesApp.Data
                 mstEdges.Add((from, to, weight));
                 totalCost += weight;
 
+                // Add new edges from the newly connected ward
                 foreach (var (dest, w) in adjacencyList[to])
                 {
                     if (!visited.Contains(dest))
@@ -102,9 +118,13 @@ namespace MunicipalServicesApp.Data
             return (mstEdges, totalCost);
         }
 
-        // ================================================================
-        // DEMO GRAPH TRAVERSAL (OPTIONAL)
-        // ================================================================
+        
+        
+        
+        /* Demonstrates how graph traversal and MST logic operate
+           using sample ward connections combined with real issue data.
+           This hybrid setup allows testing and visualisation of route planning
+           even without live map coordinates. */
         public void DemoGraphTraversal(List<Issue> issuesInArea, string areaName)
         {
             AddEdge("Ward A", "Ward B", 5);
@@ -134,9 +154,7 @@ namespace MunicipalServicesApp.Data
             );
         }
 
-        // ================================================================
-        // DRAWING VISUAL GRAPH (STATIC DEMO)
-        // ================================================================
+        // Used to help users understand connectivity at a glance.
         public void DrawGraph(PaintEventArgs e)
         {
             var g = e.Graphics;
@@ -145,6 +163,8 @@ namespace MunicipalServicesApp.Data
             var font = new Font("Segoe UI", 10);
             var brush = Brushes.Black;
 
+
+            // Predefined layout positions for visual clarity
             var positions = new Dictionary<string, Point>
             {
                 ["Ward A"] = new Point(80, 100),
@@ -153,11 +173,14 @@ namespace MunicipalServicesApp.Data
                 ["Ward D"] = new Point(250, 200)
             };
 
+            // Draw connections and their travel costs
             DrawLine(g, pen, positions["Ward A"], positions["Ward B"], "5");
             DrawLine(g, pen, positions["Ward B"], positions["Ward C"], "3");
             DrawLine(g, pen, positions["Ward A"], positions["Ward D"], "2");
             DrawLine(g, pen, positions["Ward C"], positions["Ward D"], "4");
 
+
+            // Draw each ward as a circle; highlight those visited by BFS
             foreach (var kvp in positions)
             {
                 var isVisited = traversalOrder.Contains(kvp.Key);
@@ -168,6 +191,7 @@ namespace MunicipalServicesApp.Data
             }
         }
 
+        // Draw a connection line and label it with its distance (weight)
         private void DrawLine(Graphics g, Pen pen, Point a, Point b, string weight)
         {
             g.DrawLine(pen, a, b);
@@ -176,3 +200,18 @@ namespace MunicipalServicesApp.Data
         }
     }
 }
+
+/*References
+GeeksforGeeks, 2025. Prim’s Minimum Spanning Tree (MST) Algorithm – Greedy Approach. [Online]
+Available at: https://www.geeksforgeeks.org/prims-minimum-spanning-tree-mst-greedy-algo-5/
+[Accessed 12 November 2025].
+
+Microsoft, 2025. Graph Data Structures in C#. [Online]
+Available at: https://learn.microsoft.com/en-us/dotnet/standard/collections/when-to-use-generic-collections
+[Accessed 12 November 2025].
+
+geeksforgeeks, 2025. Breadth First Search or BFS for a Graph. [Online] 
+Available at: https://www.geeksforgeeks.org/dsa/breadth-first-search-or-bfs-for-a-graph/
+[Accessed 12 November 2025].
+*/
+

@@ -4,13 +4,18 @@ using System.Text;
 
 namespace MunicipalServicesApp.Data
 {
-    /// <summary>
-    /// Represents a department collaboration graph.
-    /// </summary>
+    /*
+    Represents a simple undirected graph showing collaboration links between departments.
+    Used to model how different service units (e.g. Water, Sanitation, Roads) are interconnected for coordination and communication within the municipality.
+     */
     public class DepartmentGraph
     {
+
+        // Stores graph edges: each department maps to its connected departments
         private Dictionary<string, List<string>> adj = new();
 
+
+        // Adds a two-way (undirected) connection between two departments.
         public void AddEdge(string from, string to)
         {
             if (!adj.ContainsKey(from))
@@ -22,7 +27,7 @@ namespace MunicipalServicesApp.Data
             adj[to].Add(from);
         }
 
-        // Breadth-First Search traversal order
+        /// Performs a Breadth-First Search (BFS) to show connected departments (GeeksforGeeks, 2025).
         public string BFS(string start)
         {
             if (!adj.ContainsKey(start))
@@ -56,3 +61,9 @@ namespace MunicipalServicesApp.Data
         }
     }
 }
+
+/*References
+GeeksforGeeks, 2025. Breadth First Search or BFS for a Graph. [Online] 
+Available at: https://www.geeksforgeeks.org/dsa/breadth-first-search-or-bfs-for-a-graph/
+[Accessed 12 November 2025].
+*/

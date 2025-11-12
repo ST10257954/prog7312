@@ -8,15 +8,28 @@ using MunicipalServicesApp.Models;
 
 namespace MunicipalServicesApp
 {
+
+    /*
+    Manages display, search, and recommendation of community or municipal events.
+    Demonstrates the use of core data structures (Queue, Stack, HashSet, SortedDictionary)
+    to enhance search experience, track user activity, and support event filtering (GeeksforGeeks, 2025).
+    */
+
     public partial class EventsForm : Form
     {
-        // Core data structures
+        // Sorted by date to allow easy chronological browsing of events
         private readonly SortedDictionary<DateTime, List<Event>> eventsByDate = new();
-        private readonly Queue<string> searchHistory = new();     // last 5 searches
-        private readonly Stack<Event> recentlyViewed = new();     // recently viewed events
+
+        // Keeps track of the user’s last 5 searches for autocomplete suggestions
+        private readonly Queue<string> searchHistory = new();
+
+        // Stores the most recently viewed events to support “Recently Viewed” recommendations
+        private readonly Stack<Event> recentlyViewed = new();
+
+        // Prevents duplicate categories and helps identify popular event themes
         private readonly HashSet<string> uniqueCategories = new();
 
-        // Persistent search history file
+        // File used to persist user search history between sessions
         private readonly string historyFile = "searchHistory.txt";
 
         public EventsForm()
@@ -25,13 +38,16 @@ namespace MunicipalServicesApp
             Load += EventsForm_Load;
         }
 
+
+        // Called when the form loads to populate demo data and restore user preferences (GeeksforGeeks, 2025)
         private void EventsForm_Load(object sender, EventArgs e)
         {
-            // Load previous user behaviour
+            // reload saved searches from previous session
             LoadSearchHistory();
 
-            // ------------------------------------------------------------------
-            // Demo data (representing events retrieved from backend)
+
+
+            // Demo data — simulates events that would normally come from a database
             AddEvent("Heritage Day Celebration", new DateTime(2025, 9, 24), "Cultural", "Parade and food market.");
             AddEvent("Heritage Business Expo", new DateTime(2025, 10, 25), "Business", "Support local businesses.");
             AddEvent("Job Fair", new DateTime(2025, 10, 28), "Employment", "Meet local companies hiring youth.");
@@ -42,30 +58,32 @@ namespace MunicipalServicesApp
             AddEvent("Sports Day at the Stadium", new DateTime(2025, 11, 22), "Sports", "Family-friendly sports day.");
             AddEvent("Holiday Food Drive", new DateTime(2025, 12, 5), "Charity", "Donate food & support families.");
             AddEvent("Art in the Park", new DateTime(2025, 12, 10), "Arts", "Outdoor art exhibition & workshops.");
-            // ------------------------------------------------------------------
 
-            // DataGridView setup
+
+
+            // Configure table layout for better readability
             dgvEvents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvEvents.CellClick += DgvEvents_CellClick;
 
-            // Enter key triggers Search
+            // Pressing Enter automatically triggers search
             this.AcceptButton = btnSearch;
 
-            // Display initial view
+            // Show default event list at startup
             DisplayEvents();
             btnShowAll.Visible = false;
 
-            // Label styling polish
+            // Adjust label to allow dynamic recommendation text wrapping
             lblRecommendations.AutoSize = true;
             lblRecommendations.MaximumSize = new Size(820, 0);
             lblRecommendations.TextAlign = ContentAlignment.TopLeft;
             lblRecommendations.Visible = false;
 
+
+            // Trigger autocomplete setup when user clicks the search box (GeeksforGeeks, 2025)
             txtSearch.Enter += TxtSearch_Enter;
         }
 
-        // ----------------------------------------------------------------------
-        // Event creation helper
+        // Adds a new event to the collection while grouping by date for structure
         private void AddEvent(string title, DateTime date, string category, string description)
         {
             if (!eventsByDate.ContainsKey(date))
@@ -75,12 +93,13 @@ namespace MunicipalServicesApp
             uniqueCategories.Add(category);
         }
 
-        // ----------------------------------------------------------------------
-        // Display all or filtered events
+        // Displays all events or a filtered subset (search results)
         private void DisplayEvents(List<Event>? list = null)
         {
             dgvEvents.Rows.Clear();
 
+
+            // Choose between full dataset or filtered results
             var displayList = list ?? eventsByDate.SelectMany(kv => kv.Value);
             foreach (var ev in displayList)
                 dgvEvents.Rows.Add(ev.Title, ev.Date.ToShortDateString(), ev.Category, ev.Description);
@@ -89,8 +108,7 @@ namespace MunicipalServicesApp
             lblRecommendations.Text = list == null ? "Showing all events." : "Filtered results displayed below.";
         }
 
-        // ----------------------------------------------------------------------
-        // SEARCH FUNCTION
+        // Handles search logic and triggers recommendation generation
         private void btnSearch_Click(object sender, EventArgs e)
         {
             string keyword = txtSearch.Text.Trim().ToLower();
@@ -101,20 +119,20 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // Maintain only 5 most recent searches
+            // Maintain a short-term memory of only the 5 latest searches (GeeksforGeeks, 2025)
             if (searchHistory.Count >= 5)
                 searchHistory.Dequeue();
             searchHistory.Enqueue(keyword);
             SaveSearchHistory();
 
-            // Update AutoComplete source
+            // Update autocomplete suggestions dynamically
             var src = new AutoCompleteStringCollection();
             src.AddRange(searchHistory.Reverse().ToArray());
             txtSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             txtSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
             txtSearch.AutoCompleteCustomSource = src;
 
-            // Perform the search
+            // Filter matching events based on keyword relevance
             var results = eventsByDate
                 .SelectMany(kv => kv.Value)
                 .Where(ev => ev.Title.ToLower().Contains(keyword)
@@ -130,10 +148,12 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // Track user behaviour
+            // Push found events to “recently viewed” stack for user tracking
             foreach (var ev in results)
                 recentlyViewed.Push(ev);
 
+
+            // Show filtered results and generate related suggestions (GeeksforGeeks, 2025)
             DisplayEvents(results);
             GenerateRecommendations(keyword, results);
             btnShowAll.Visible = true;
@@ -142,8 +162,7 @@ namespace MunicipalServicesApp
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        // ----------------------------------------------------------------------
-        // SHOW ALL EVENTS (Reset)
+        // Resets the interface to show all available events again
         private void btnShowAll_Click(object sender, EventArgs e)
         {
             txtSearch.Clear();
@@ -153,13 +172,12 @@ namespace MunicipalServicesApp
             btnShowAll.Visible = false;
         }
 
-        // ----------------------------------------------------------------------
-        // RECOMMENDATION ENGINE
+        // Generates event suggestions based on category, keyword, and user activity
         private void GenerateRecommendations(string keyword, List<Event> currentResults)
         {
             var allEvents = eventsByDate.SelectMany(kv => kv.Value).ToList();
 
-            // Find main category among current results
+            // Identify most common category in the current search results
             string? mainCategory = currentResults
                 .GroupBy(e => e.Category)
                 .OrderByDescending(g => g.Count())
@@ -168,6 +186,8 @@ namespace MunicipalServicesApp
 
             List<Event> related = new();
 
+
+            // Recommend events from the same category
             if (!string.IsNullOrEmpty(mainCategory))
             {
                 related = allEvents
@@ -177,7 +197,7 @@ namespace MunicipalServicesApp
                     .ToList();
             }
 
-            // Add keyword matches if needed
+            // Include similar keyword matches to fill gaps
             if (related.Count < 3)
             {
                 var keywordMatches = allEvents
@@ -191,7 +211,7 @@ namespace MunicipalServicesApp
                 related.AddRange(keywordMatches);
             }
 
-            // Add trending searches
+            // Add trending searches for a dynamic experience (GeeksforGeeks, 2025)
             var frequentTerm = searchHistory.GroupBy(s => s)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
@@ -208,13 +228,13 @@ namespace MunicipalServicesApp
                 related.AddRange(trending);
             }
 
-            // Build recommendation message
+            // Build recommendation message for display
             string recText = related.Count == 0
                 ? "You might also like:\nNo other related events found."
                 : "You might also like:\n" +
                   string.Join("\n", related.Select(r => $"- {r.Title} ({r.Category}) on {r.Date:d}"));
 
-            // Add recently viewed items
+            // Include up to 3 recently viewed events to personalise suggestions
             if (recentlyViewed.Count > 0)
             {
                 var recent = recentlyViewed.Take(3)
@@ -226,8 +246,7 @@ namespace MunicipalServicesApp
             lblRecommendations.Visible = true;
         }
 
-        // ----------------------------------------------------------------------
-        // Event click handler
+        // When user clicks an event, mark it as recently viewed
         private void DgvEvents_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0 && e.RowIndex < dgvEvents.Rows.Count)
@@ -244,8 +263,7 @@ namespace MunicipalServicesApp
             }
         }
 
-        // ----------------------------------------------------------------------
-        // Search bar autocomplete
+        // Enables search suggestion when user focuses on the input box (GeeksforGeeks, 2025)
         private void TxtSearch_Enter(object sender, EventArgs e)
         {
             if (searchHistory.Count == 0) return;
@@ -257,8 +275,7 @@ namespace MunicipalServicesApp
             txtSearch.AutoCompleteCustomSource = autoComplete;
         }
 
-        // ----------------------------------------------------------------------
-        // Save & load user search behaviour
+        // Save and reload user search behaviour to preserve continuity
         private void SaveSearchHistory()
         {
             try { File.WriteAllLines(historyFile, searchHistory); } catch { }
@@ -278,7 +295,7 @@ namespace MunicipalServicesApp
             catch { }
         }
 
-        // Navigation back to main menu
+        // Navigation button to return to main menu form (GeeksforGeeks, 2025)
         private void btnBack_Click(object sender, EventArgs e)
         {
             this.Hide();
@@ -288,3 +305,9 @@ namespace MunicipalServicesApp
         }
     }
 }
+
+/*References
+geeksforgeeks, 2025. SortedDictionary Implementation in C#. [Online] 
+Available at: https://www.geeksforgeeks.org/c-sharp/sorteddictionary-implementation-in-c-sharp/
+[Accessed 13 October 2025].
+*/

@@ -6,6 +6,10 @@ using MunicipalServicesApp.Models;
 
 namespace MunicipalServicesApp.Data
 {
+    /*
+    Handles saving and loading of service request data (issues) from a local JSON file.
+    Ensures persistence of reports between sessions (Anjaria, 2024).
+    */
     public static class IssueRepository
     {
         private static readonly string FilePath =
@@ -65,4 +69,10 @@ namespace MunicipalServicesApp.Data
 /*References
 microsoft, 2025.Tutorial: Create a Windows Forms app in Visual Studio with C#. [Online] 
 Available at: https://learn.microsoft.com/en-us/visualstudio/ide/create-csharp-winform-visual-studio?view=vs-2022
-[Accessed 05 September 2025]. */
+[Accessed 05 September 2025].
+
+Anjaria, R., 2024. Working with JSON in C#: Using System.Text.Json. [Online] 
+Available at: https://rupen-anjaria.medium.com/working-with-json-in-c-using-system-text-json-9b61f95b551e
+[Accessed 28 November 2025].
+
+*/

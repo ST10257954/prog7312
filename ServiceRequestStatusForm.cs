@@ -6,11 +6,23 @@ using System.Windows.Forms;
 using System.IO;
 using MunicipalServicesApp.Models;
 using MunicipalServicesApp.Data;
+using Microsoft.VisualBasic.Logging;
+using Newtonsoft.Json.Linq;
+
+
 
 namespace MunicipalServicesApp
 {
+    /*
+    ServiceRequestStatusForm — manages visualization, prioritization, and status tracking of all municipal service requests. 
+    Combines multiple data structures (AVL tree, BST, and MinHeap) to optimize search, sorting, and urgency handling (Microsoft, 2025).
+    */
+
     public partial class ServiceRequestStatusForm : Form
     {
+
+        // UI COMPONENTS
+        // Define all UI elements upfront for structured layout and easy configuration
         private TextBox txtSearch;
         private Button btnRefresh;
         private Button btnBack;
@@ -22,19 +34,26 @@ namespace MunicipalServicesApp
         private Label lblHeaderTitle;
         private Label lblDetailsTitle;
         private Label lblDetailsBody;
+        private Label lblStatusColor;
         private FlowLayoutPanel attachmentPanel;
         private ComboBox cmbStatus;
-        private Label lblStatusColor;
-        private ServiceRequestAVL avl = new();
         private Panel rightCard;
         private Panel graphPanel;
+
+
+        // DATA STRUCTURES
+        // Stores and organizes service request data for efficient retrieval
+        private ServiceRequestAVL avl = new(); 
         private List<Issue> allIssues = new();
         private ServiceRequestBST bst = new();
         private MinHeap priorityHeap = new();
 
-        // Keep a single paint handler bound to the graph panel
+        // Used for dynamic chart rendering without duplicate binding
         private PaintEventHandler graphPaintHandler;
 
+
+        /* Constructor
+           Sets up the UI dynamically using BuildUI() to keep layout logic separate from functionality for cleaner architecture(Microsoft, 2025). */
         public ServiceRequestStatusForm()
         {
             InitializeComponent();
@@ -45,6 +64,8 @@ namespace MunicipalServicesApp
 
         private void BuildUI()
         {
+            /*Constructor
+           Sets up the UI dynamically using BuildUI() to keep layout logic separate from functionality for cleaner architecture (Microsoft, 2025). */
             Text = "Service Request Status";
             StartPosition = FormStartPosition.CenterScreen;
             Size = new Size(1080, 630);
@@ -53,6 +74,7 @@ namespace MunicipalServicesApp
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
 
+            // Root layout — defines header, body, and footer regions
             var root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -61,12 +83,11 @@ namespace MunicipalServicesApp
                 Padding = new Padding(15, 10, 15, 10),
                 BackColor = ThemeManager.BackgroundLight
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 55));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 55)); //Toolbar
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); //Main area
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 35)); //Footer
             Controls.Add(root);
 
-            /* ---------------------------- Toolbar Section ---------------------------- */
             var toolbar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -78,6 +99,8 @@ namespace MunicipalServicesApp
             };
             root.Controls.Add(toolbar, 0, 0);
 
+
+            // Search bar for ticket/category/location
             txtSearch = new TextBox
             {
                 PlaceholderText = "Search by ticket, category, location or description...",
@@ -87,6 +110,8 @@ namespace MunicipalServicesApp
             txtSearch.TextChanged += TxtSearch_TextChanged;
             toolbar.Controls.Add(txtSearch);
 
+
+            // Toolbar buttons — intuitive top-level navigation
             btnRefresh = CreateToolbarButton("Refresh", ThemeManager.EmeraldMid);
             btnBack = CreateToolbarButton("Back", ThemeManager.MutedGrey);
             btnUrgent = CreateToolbarButton("Show Next Urgent", ThemeManager.EmeraldDark);
@@ -172,6 +197,7 @@ namespace MunicipalServicesApp
             detailsLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // Dropdown
             contentPanel.Controls.Add(detailsLayout);
 
+            // --- Details section ---
             lblDetailsTitle = new Label
             {
                 Text = "Select a service request to view details",
@@ -249,7 +275,7 @@ namespace MunicipalServicesApp
             rightCard.Controls.Add(contentPanel);
             rightCard.Controls.Add(headerPanel);
 
-            /* ------------------------------ Graph Panel ----------------------------- */
+            // --- Graph panel setup (hidden until activated) ---
             graphPanel = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -273,14 +299,12 @@ namespace MunicipalServicesApp
             };
             root.Controls.Add(lblNextUrgent, 0, 2);
 
-            /* ------------------------- Final Data Preparation ----------------------- */
+            // Initial data loading
             ReloadDataAndBuildTree();
             BuildPriorityHeap();
             UpdateNextUrgentLabel();
         }
-        // ===========================================================
-        // STATUS DROPDOWN HANDLER
-        // ===========================================================
+       
         private void CmbStatus_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (tvRequests.SelectedNode?.Tag is not Issue issue)
@@ -305,7 +329,7 @@ namespace MunicipalServicesApp
             ReloadDataAndBuildTree();
         }
 
-
+        // Creates toolbar buttons for consistent design
         private Button CreateToolbarButton(string text, Color color)
         {
             var btn = new Button
@@ -380,9 +404,7 @@ namespace MunicipalServicesApp
     graphPanel.Paint += graphPaintHandler;
     graphPanel.Invalidate();
 
-    // ============================================================
-    // 🔹 STEP 5: REAL-DATA MST (Prim’s Algorithm)
-    // ============================================================
+    
     try
     {
         var g = new ServiceGraph();
@@ -517,6 +539,7 @@ namespace MunicipalServicesApp
 
         private void BuildPriorityHeap()
         {
+            // Assign priority levels based on service type for fairness
             foreach (var issue in allIssues)
             {
                 switch (issue.Category)
@@ -611,8 +634,10 @@ namespace MunicipalServicesApp
             RebuildTreeView(sorted, true);
         }
 
+        // Dynamically rebuilds the left TreeView for live updates
         private void RebuildTreeView(IEnumerable<Issue> issues, bool groupByCategory)
         {
+            // Rebuilds the request tree view dynamically
             tvRequests.BeginUpdate();
             tvRequests.Nodes.Clear();
 
@@ -624,6 +649,7 @@ namespace MunicipalServicesApp
                 return;
             }
 
+            // Determines text color based on issue status
             Color ColorFor(string status) => status switch
             {
                 "Completed" => Color.ForestGreen,
@@ -632,6 +658,8 @@ namespace MunicipalServicesApp
                 _ => Color.DarkRed
             };
 
+
+            // Creates a tree node for each issue
             TreeNode MakeIssueNode(Issue issue)
             {
                 var node = new TreeNode($"{issue.TicketNumber} — {issue.Location} [{issue.Status}]") { Tag = issue };
@@ -639,6 +667,8 @@ namespace MunicipalServicesApp
                 return node;
             }
 
+
+            // Group by category if multiple categories exist
             if (groupByCategory)
             {
                 foreach (var group in list.GroupBy(i => i.Category))
@@ -659,6 +689,8 @@ namespace MunicipalServicesApp
 
         private void TxtSearch_TextChanged(object sender, EventArgs e)
         {
+
+            // Filters issues based on search keywords
             var q = (txtSearch.Text ?? string.Empty).Trim();
             if (q.Length == 0)
             {
@@ -669,6 +701,8 @@ namespace MunicipalServicesApp
             var tokens = q.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                           .Select(t => t.ToLowerInvariant()).ToArray();
 
+
+            // Returns true if all tokens match any issue field
             bool Match(Issue i)
             {
                 string ticket = i.TicketNumber?.ToLowerInvariant() ?? "";
@@ -689,6 +723,7 @@ namespace MunicipalServicesApp
 
         private void BtnRefresh_Click(object sender, EventArgs e)
         {
+            // Reloads all service requests and updates UI
             ReloadDataAndBuildTree();
             BuildPriorityHeap();
             UpdateNextUrgentLabel();
@@ -733,7 +768,7 @@ namespace MunicipalServicesApp
             };
         }
 
-
+        // Displays attached files safely with click-to-open support
         private void DisplayAttachments(List<string> paths)
         {
             attachmentPanel.Controls.Clear();
@@ -745,6 +780,7 @@ namespace MunicipalServicesApp
                 return;
             }
 
+            // Create a button for each attachment
             foreach (var p in list)
             {
                 var fileName = SafeFileName(p);
@@ -760,6 +796,7 @@ namespace MunicipalServicesApp
                 btn.FlatAppearance.BorderSize = 1;
                 btn.FlatAppearance.BorderColor = Color.Gainsboro;
 
+                // Open file on click, with error handling
                 btn.Click += (_, __) =>
                 {
                     try
@@ -787,13 +824,17 @@ namespace MunicipalServicesApp
             attachmentPanel.Visible = true;
         }
 
+
+        // Safely extracts filename from a path, even if invalid
         private static string SafeFileName(string path)
         {
             try { return Path.GetFileName(path); }
             catch { return path ?? ""; }
         }
 
-private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllOption = false)
+
+        // Simple dialog to select a service area for graph analysis
+        private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllOption = false)
 {
     if (availableAreas == null || availableAreas.Length == 0)
     {
@@ -843,12 +884,15 @@ private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllO
         form.Controls.Add(label);
         form.AcceptButton = ok;
 
-        return form.ShowDialog() == DialogResult.OK
+
+                // Returns selected area or blank if cancelled
+                return form.ShowDialog() == DialogResult.OK
             ? combo.SelectedItem?.ToString() ?? string.Empty
             : string.Empty;
     }
 }
 
+        // Loads service requests into an AVL tree for balanced viewing
         private void LoadRequestsBalanced()
         {
             avl = new ServiceRequestAVL();
@@ -860,10 +904,19 @@ private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllO
             foreach (var issue in balancedList)
                 tvRequests.Nodes.Add($"{issue.TicketNumber} - {issue.Category} - Updated: {issue.LastUpdated:g}");
 
-            LoadRequestsBalanced();
-
         }
 
     }
 
 }
+/*
+References:
+Microsoft, 2025. Windows Forms Controls Overview. [Online]
+Available at: https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/
+[Accessed 02 November 2025].
+
+GeeksforGeeks, 2025. Introduction to Min-Heap. [Online] 
+Available at: https://www.geeksforgeeks.org/dsa/introduction-to-min-heap-data-structure/
+[Accessed 03 November 2025].
+
+*/

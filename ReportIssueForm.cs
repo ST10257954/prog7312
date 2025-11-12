@@ -9,9 +9,18 @@ using MunicipalServicesApp.Data;
 
 namespace MunicipalServicesApp
 {
+
+    /*
+    ReportIssueForm — allows residents to submit new municipal service requests.
+    This form collects details such as location, category, area, and attachments,
+    and supports offline or data-saving modes for accessibility (Microsoft, 2025).
+    */
+
     public partial class ReportIssueForm : Form
     {
-        // Theme
+
+        /*These static Color fields define a consistent visual identity for the form.
+           Using constants ensures maintainable styling and consistent contrast ratios.*/
         private static readonly Color Accent = Color.FromArgb(46, 125, 50);
         private static readonly Color AccentDark = Color.FromArgb(27, 94, 32);
         private static readonly Color Surface = Color.White;
@@ -19,6 +28,9 @@ namespace MunicipalServicesApp
         private static readonly Color BorderColor = Color.FromArgb(220, 223, 226);
         private static readonly Color Muted = Color.FromArgb(108, 117, 125);
 
+
+        /*Declare all UI components used within the report submission form.
+           Grouping them here simplifies initialization and later styling changes.*/
         private TextBox txtLocation;
         private ComboBox cmbCategory;
         private ComboBox cmbArea;
@@ -31,18 +43,30 @@ namespace MunicipalServicesApp
         private StatusStrip status;
         private ToolStripStatusLabel statusMode, statusDataSaver;
 
+        /*Constructor
+         Initializes the form and triggers the UI builder method.
+         Separating layout construction into BuildUi() improves readability and aligns with the Single-Responsibility Principle (Microsoft, 2025).*/
         public ReportIssueForm()
         {
-            BuildUi();
+            BuildUi(); // dynamically builds and styles all controls when the form is created
         }
 
         private void InitializeComponent() { }
 
+
+        /*This method programmatically creates the interface for reporting a municipal issue.
+          It uses layout containers (TableLayoutPanel, FlowLayoutPanel) to maintain consistent spacing and alignment.
+         */
+
         private void BuildUi()
         {
-            // -----------------------------------------------------------
-            // BASIC FORM SETTINGS
-            // -----------------------------------------------------------
+            /*
+             BASIC FORM SETTINGS
+             Defines window size, title, style, and general behavior.
+             Using fixed sizing prevents layout shifting and enforces a
+             consistent user experience across display resolutions.
+             */
+
             Text = "Report an Issue";
             StartPosition = FormStartPosition.CenterParent;
             ClientSize = new Size(1060, 640);
@@ -68,9 +92,9 @@ namespace MunicipalServicesApp
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));     // Status bar
             Controls.Add(root);
 
-            // -----------------------------------------------------------
-            // HEADER SECTION
-            // -----------------------------------------------------------
+
+            /*Visually identifies the form and app brand. The line below the
+              header provides a subtle separation from the main content.*/
             var header = new Panel { BackColor = AccentDark, Dock = DockStyle.Fill };
             header.Paint += (s, e) =>
             {
@@ -90,9 +114,9 @@ namespace MunicipalServicesApp
             header.Controls.Add(headerLbl);
             root.Controls.Add(header, 0, 0);
 
-            // -----------------------------------------------------------
-            // MAIN CONTENT AREA (Top + Bottom Cards)
-            // -----------------------------------------------------------
+            /*
+            The modular structure improves code reuse and visual consistency.
+            */
             var content = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -116,9 +140,10 @@ namespace MunicipalServicesApp
             topGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
             cardTop.Controls.Add(topGrid);
 
-            // -----------------------------------------------------------
-            // LEFT SIDE: ISSUE DETAILS
-            // -----------------------------------------------------------
+            /*
+             Contains textboxes and dropdowns for structured issue reporting.
+             Events are linked to UpdateEngagement() and UpdateEstimate() so feedback adjusts dynamically based on user input.
+             */
             var details = MakeCard(innerPadding: 16);
             topGrid.Controls.Add(details, 0, 0);
 
@@ -136,13 +161,13 @@ namespace MunicipalServicesApp
             detailsGrid.Controls.Add(MakeSectionTitle("Issue details"), 0, 0);
             detailsGrid.SetColumnSpan(detailsGrid.GetControlFromPosition(0, 0), 2);
 
-            // Address field
+            // Address field — essential for location-based routing
             detailsGrid.Controls.Add(MakeLabel("Address:"), 0, 1);
             txtLocation = new TextBox { Dock = DockStyle.Fill };
             txtLocation.TextChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(txtLocation, 1, 1);
 
-            // Service area selection
+            // Ward/area selection
             detailsGrid.Controls.Add(MakeLabel("Service Area:"), 0, 2);
             cmbArea = new ComboBox
             {
@@ -153,7 +178,7 @@ namespace MunicipalServicesApp
             cmbArea.SelectedIndex = 0;
             detailsGrid.Controls.Add(cmbArea, 1, 2);
 
-            // Category selection
+            // Service category selection
             detailsGrid.Controls.Add(MakeLabel("Category:"), 0, 3);
             cmbCategory = new ComboBox
             {
@@ -164,15 +189,15 @@ namespace MunicipalServicesApp
             cmbCategory.SelectedIndexChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(cmbCategory, 1, 3);
 
-            // Description field
+            // Description input — allows contextual detail for technicians
             detailsGrid.Controls.Add(MakeLabel("Description:"), 0, 4);
             rtbDescription = new RichTextBox { Dock = DockStyle.Fill };
             rtbDescription.TextChanged += (_, __) => { UpdateEngagement(); UpdateEstimate(); };
             detailsGrid.Controls.Add(rtbDescription, 1, 4);
 
-            // -----------------------------------------------------------
-            // RIGHT SIDE: MODES & ENGAGEMENT
-            // -----------------------------------------------------------
+            /*
+             Includes offline and data-saver checkboxes, progress bar, and guidance text to keep the user informed (Microsoft, 2025).
+             */
             var modes = MakeCard(innerPadding: 16);
             topGrid.Controls.Add(modes, 1, 0);
 
@@ -187,7 +212,7 @@ namespace MunicipalServicesApp
 
             modesGrid.Controls.Add(MakeSectionTitle("Modes & Engagement"), 0, 0);
 
-            // Checkboxes: Data Saver + Offline Mode
+            // Toggles for data-saver and offline queueing
             var toggleRow = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -222,10 +247,8 @@ namespace MunicipalServicesApp
             };
             modesGrid.Controls.Add(progress, 0, 5);
 
-            // -----------------------------------------------------------
-            // ATTACHMENTS SECTION (BOTTOM CARD)
-            // -----------------------------------------------------------
-            var cardBottom = MakeCard();
+            //users can upload supporting images or documents, organized with a button and list to improve usability.
+                 var cardBottom = MakeCard();
             content.Controls.Add(cardBottom, 0, 1);
 
             var attachGrid = new TableLayoutPanel
@@ -258,9 +281,7 @@ namespace MunicipalServicesApp
             attachGrid.Controls.Add(lstAttachments, 1, 1);
             attachGrid.SetRowSpan(lstAttachments, 2);
 
-            // -----------------------------------------------------------
-            // FOOTER BUTTONS
-            // -----------------------------------------------------------
+            //Provides main navigation and submission controls, positioned right-aligned for ergonomic access.
             var footer = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -286,9 +307,7 @@ namespace MunicipalServicesApp
 
             footer.Controls.AddRange(new Control[] { btnBack, btnExport, btnCopySms, btnSubmit });
 
-            // -----------------------------------------------------------
-            // STATUS BAR
-            // -----------------------------------------------------------
+            //Displays current operational mode and data-saving status, helps users confirm whether they are working online/offline .
             status = new StatusStrip { SizingGrip = false, BackColor = Surface };
             statusMode = new ToolStripStatusLabel("Online");
             statusDataSaver = new ToolStripStatusLabel("Data saver: On") { ForeColor = Muted };
@@ -297,9 +316,7 @@ namespace MunicipalServicesApp
             status.Items.Add(statusDataSaver);
             root.Controls.Add(status, 0, 3);
 
-            // -----------------------------------------------------------
-            // EVENT HANDLERS TO RESET HIGHLIGHT COLORS AFTER VALIDATION
-            // -----------------------------------------------------------
+            //These handlers reset background colors when a field is corrected, helping users clearly see validation feedback (Polgár, 2024).
             txtLocation.TextChanged += (_, __) =>
             {
                 if (!string.IsNullOrWhiteSpace(txtLocation.Text))
@@ -318,9 +335,8 @@ namespace MunicipalServicesApp
                     rtbDescription.BackColor = Color.White;
             };
 
-            // -----------------------------------------------------------
-            // DEFAULT SETUP
-            // -----------------------------------------------------------
+            // Defines form-wide defaults and triggers initial UI refresh (Polgár, 2024). 
+
             AcceptButton = btnSubmit;  // Pressing Enter triggers Submit
             ToggleForDataSaver();
             UpdateEngagement();
@@ -328,44 +344,86 @@ namespace MunicipalServicesApp
             UpdateStatusBar();
         }
 
-        // Helpers -------------------------------------------------------------
+        // Creates a card-style container to group related form sections
         private Panel MakeCard(int innerPadding = 0) =>
-            new Panel { BackColor = Surface, BorderStyle = BorderStyle.FixedSingle, Dock = DockStyle.Fill, Padding = new Padding(innerPadding) };
+            new Panel
+            {
+                BackColor = Surface,
+                BorderStyle = BorderStyle.FixedSingle,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(innerPadding)
+            };
 
+        // Creates bold section headers for form clarity
         private static Label MakeSectionTitle(string text) =>
-            new Label { Text = text, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = Color.Black, TextAlign = ContentAlignment.MiddleLeft };
+            new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+                ForeColor = Color.Black,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
 
+        // Creates standard labels for input fields
         private static Label MakeLabel(string text) =>
-            new Label { Text = text, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Color.Black };
+            new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.Black
+            };
 
+        // Primary button – used for main actions like “Submit”
         private Button Primary(string text) =>
-            new Button { Text = text, AutoSize = true, BackColor = Accent, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10.5f, FontStyle.Bold) };
+            new Button
+            {
+                Text = text,
+                AutoSize = true,
+                BackColor = Accent,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold)
+            };
 
+        // Ghost button – used for secondary actions (e.g., “Back” or “Export”)
         private Button Ghost(string text) =>
-            new Button { Text = text, AutoSize = true, BackColor = Surface, ForeColor = Color.Black, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10.5f) };
+            new Button
+            {
+                Text = text,
+                AutoSize = true,
+                BackColor = Surface,
+                ForeColor = Color.Black,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10.5f)
+            };
 
-        // Behaviour -----------------------------------------------------------
+
+        // Toggles Data Saver mode to disable or clear attachments
         private void ToggleForDataSaver()
         {
             btnAddAttachment.Enabled = !chkDataSaver.Checked;
             if (chkDataSaver.Checked)
             {
-                lstAttachments.Items.Clear();
+                lstAttachments.Items.Clear(); // removes files to conserve data
                 lblEngagement.Text = "Attachments disabled in Data Saver Mode.";
             }
         }
 
+        // Updates the status bar to reflect current mode (online/offline, data saver)
         private void UpdateStatusBar()
         {
             statusMode.Text = chkOffline.Checked ? "Offline (queued)" : "Online";
             statusDataSaver.Text = $"Data saver: {(chkDataSaver.Checked ? "On" : "Off")}";
         }
 
+        // Tracks form completion and gives user step-by-step feedback (Polgár, 2024)
         private void UpdateEngagement()
         {
             int p = 0;
 
-            // Calculate completion progress
+            // Calculate completion percentage
             if (!string.IsNullOrWhiteSpace(txtLocation.Text)) p += 25;
             if (cmbCategory.SelectedItem != null) p += 25;
             if (!string.IsNullOrWhiteSpace(rtbDescription.Text)) p += 25;
@@ -373,7 +431,7 @@ namespace MunicipalServicesApp
 
             progress.Value = p;
 
-            // Display correct guidance message based on what’s missing
+            // Display guidance message based on what’s missing
             if (string.IsNullOrWhiteSpace(txtLocation.Text))
             {
                 lblEngagement.Text = "Step 1: Add your location to help teams find the issue.";
@@ -396,7 +454,7 @@ namespace MunicipalServicesApp
             }
         }
 
-
+        // Updates the estimated data usage for uploading attachments
         private void UpdateEstimate()
         {
             int approxKb = 1 + lstAttachments.Items.Count * 2;
@@ -404,9 +462,12 @@ namespace MunicipalServicesApp
             lblEstimate.Text = $"Estimated upload size: ~{approxKb} KB";
         }
 
-        // Event Handlers ------------------------------------------------------
+
+        // Handles adding file attachments when the user clicks “Add Attachment(s)”
         private void BtnAddAttachment_Click(object sender, EventArgs e)
         {
+
+            // Prevent adding files if Data Saver mode is active
             if (chkDataSaver.Checked)
             {
                 MessageBox.Show("Attachments are disabled in Data Saver mode.", "Data Saver Active",
@@ -414,6 +475,8 @@ namespace MunicipalServicesApp
                 return;
             }
 
+
+            // Allow user to select multiple files from local storage
             using var ofd = new OpenFileDialog
             {
                 Multiselect = true,
@@ -422,16 +485,22 @@ namespace MunicipalServicesApp
             };
             if (ofd.ShowDialog(this) != DialogResult.OK) return;
 
+
+            // Display selected file names in the attachments list
             foreach (var path in ofd.FileNames)
                 lstAttachments.Items.Add(Path.GetFileName(path));
 
+
+            // Recalculate engagement progress and upload estimate
             UpdateEngagement();
             UpdateEstimate();
         }
 
+
+        // Handles the Submit button click — validates input, saves issue, and resets the form (Polgár, 2024)
         private void BtnSubmit_Click(object sender, EventArgs e)
         {
-            // --- VALIDATION SECTION ---
+            // Highlight missing fields to ensure complete issue reports
             if (string.IsNullOrWhiteSpace(txtLocation.Text))
             {
                 txtLocation.BackColor = Color.MistyRose;
@@ -458,7 +527,7 @@ namespace MunicipalServicesApp
                 return;
             }
 
-            // --- CREATE NEW ISSUE OBJECT ---
+            // Build a new Issue record with all user inputs (Polgár, 2024)
             var issue = new Issue
             {
                 TicketNumber = $"MS-{Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper()}",
@@ -470,17 +539,21 @@ namespace MunicipalServicesApp
                 CreatedAt = DateTime.Now
             };
 
+            // Save issue to repository for persistence
             IssueRepository.AddIssue(issue);
 
-            // --- SUCCESS MESSAGE ---
+            // Confirm submission and show ticket details to the user
             MessageBox.Show(
                 $"Submitted!\nTicket: {issue.TicketNumber}\nCategory: {issue.Category}\nLocation: {issue.Location}",
                 "Report Sent", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+            // Reset all fields to prepare for a new entry
             ClearForm();
         }
 
 
+
+        // Clears form fields after successful submission to avoid duplicate entries
         private void ClearForm()
         {
             txtLocation.Clear();
@@ -494,3 +567,10 @@ namespace MunicipalServicesApp
         }
     }
 }
+
+/*
+ References:
+Polgár, T., 2024. Form validation in Windows Forms with C#. [Online] 
+Available at: https://medium.com/developer-rants/form-validation-in-windows-forms-with-c-b0b07284d962
+[Accessed 28 October 2025].
+ */
