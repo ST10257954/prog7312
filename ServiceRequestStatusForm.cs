@@ -25,11 +25,9 @@ namespace MunicipalServicesApp
         private FlowLayoutPanel attachmentPanel;
         private ComboBox cmbStatus;
         private Label lblStatusColor;
-
-
+        private ServiceRequestAVL avl = new();
         private Panel rightCard;
         private Panel graphPanel;
-
         private List<Issue> allIssues = new();
         private ServiceRequestBST bst = new();
         private MinHeap priorityHeap = new();
@@ -329,60 +327,114 @@ namespace MunicipalServicesApp
         }
 
         private void BtnGraphDemo_Click(object sender, EventArgs e)
+{
+    if (allIssues == null || allIssues.Count == 0)
+    {
+        MessageBox.Show("No service requests found. Please refresh the list first.",
+            "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        return;
+    }
+
+    // --- Step 1: Select area(s) ---
+    var availableAreas = allIssues
+        .Where(i => !string.IsNullOrWhiteSpace(i.Area))
+        .Select(i => i.Area)
+        .Distinct()
+        .ToArray();
+
+    string selectedArea = ShowAreaSelectionDialog(availableAreas, includeAllOption: true);
+    if (string.IsNullOrEmpty(selectedArea)) return;
+
+    // --- Step 2: Filter requests for the selected area ---
+    var filtered = selectedArea == "All Areas"
+        ? allIssues.ToList()
+        : allIssues.Where(i => i.Area == selectedArea).ToList();
+
+    if (filtered.Count == 0)
+    {
+        MessageBox.Show($"No service requests found for {selectedArea}.",
+            "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        return;
+    }
+
+    // --- Step 3: Count by category (for bar chart) ---
+    var categoryCounts = Enum.GetValues(typeof(IssueCategory))
+        .Cast<IssueCategory>()
+        .ToDictionary(cat => cat.ToString(),
+                      cat => filtered.Count(i => i.Category == cat));
+
+    // --- Step 4: Prepare graph panel for bar chart ---
+    rightCard.Visible = false;
+    graphPanel.Visible = true;
+    btnGraphDemo.Visible = false;
+    btnBackToDetails.Visible = true;
+
+    // Unhook any old Paint events
+    if (graphPaintHandler != null)
+        graphPanel.Paint -= graphPaintHandler;
+
+    graphPaintHandler = (s, ev) =>
+    {
+        DrawCategoryBarGraph(ev.Graphics, categoryCounts, selectedArea);
+    };
+    graphPanel.Paint += graphPaintHandler;
+    graphPanel.Invalidate();
+
+    // ============================================================
+    // 🔹 STEP 5: REAL-DATA MST (Prim’s Algorithm)
+    // ============================================================
+    try
+    {
+        var g = new ServiceGraph();
+
+        // --- Build MST graph from all real issue areas ---
+        var areas = allIssues
+            .Where(i => !string.IsNullOrWhiteSpace(i.Area))
+            .Select(i => i.Area)
+            .Distinct()
+            .ToList();
+
+        if (areas.Count < 2)
         {
-            if (allIssues == null || allIssues.Count == 0)
-            {
-                MessageBox.Show("No service requests found. Please refresh the list first.",
-                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            var availableAreas = allIssues
-                .Where(i => !string.IsNullOrWhiteSpace(i.Area))
-                .Select(i => i.Area)
-                .Distinct()
-                .ToArray();
-
-            string selectedArea = ShowAreaSelectionDialog(availableAreas, includeAllOption: true);
-if (string.IsNullOrEmpty(selectedArea)) return;
-
-// If "All Areas" is selected, use allIssues; otherwise, filter
-var filtered = selectedArea == "All Areas"
-    ? allIssues.ToList()
-    : allIssues.Where(i => i.Area == selectedArea).ToList();
-
-
-            if (filtered.Count == 0)
-            {
-                MessageBox.Show($"No service requests found for {selectedArea}.",
-                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            // Count by category — ensure every category appears, even if count = 0
-            var categoryCounts = Enum.GetValues(typeof(IssueCategory))
-                .Cast<IssueCategory>()
-                .ToDictionary(cat => cat.ToString(),
-                              cat => filtered.Count(i => i.Category == cat));
-
-
-            // Prepare graph panel
-            rightCard.Visible = false;
-            graphPanel.Visible = true;
-            btnGraphDemo.Visible = false;
-            btnBackToDetails.Visible = true;
-
-            // Unhook any old Paint events
-            if (graphPaintHandler != null)
-                graphPanel.Paint -= graphPaintHandler;
-
-            graphPaintHandler = (s, ev) =>
-            {
-                DrawCategoryBarGraph(ev.Graphics, categoryCounts, selectedArea);
-            };
-            graphPanel.Paint += graphPaintHandler;
-            graphPanel.Invalidate();
+            MessageBox.Show("Not enough area data available to build an MST.",
+                "MST Skipped", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
         }
+
+        var rand = new Random();
+        for (int i = 0; i < areas.Count; i++)
+        {
+            for (int j = i + 1; j < areas.Count; j++)
+            {
+                // Assign pseudo “distances” between areas
+                int distance = rand.Next(1, 20);
+                g.AddEdge(areas[i], areas[j], distance);
+            }
+        }
+
+        var startArea = areas[0];
+        var (edges, totalCost) = g.ComputeMST_Prim(startArea);
+
+        string mstText = edges.Count == 0
+            ? "(No MST edges found)"
+            : string.Join("\n", edges.Select(e => $"{e.From} → {e.To} ({e.Weight})"));
+
+        MessageBox.Show(
+            $"Minimum Spanning Tree\n\n" +
+            $"Start Area: {startArea}\n\n" +
+            $"{mstText}\n\n" +
+            $"Total Minimum Cost: {totalCost}",
+            "MST Analysis (Real Areas)",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        );
+    }
+    catch (Exception ex)
+    {
+        MessageBox.Show($"Error while computing MST:\n{ex.Message}",
+            "MST Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+}
 
         private void DrawCategoryBarGraph(Graphics g, Dictionary<string, int> counts, string area)
         {
@@ -796,5 +848,22 @@ private string ShowAreaSelectionDialog(string[] availableAreas, bool includeAllO
             : string.Empty;
     }
 }
+
+        private void LoadRequestsBalanced()
+        {
+            avl = new ServiceRequestAVL();
+            foreach (var issue in allIssues)
+                avl.Insert(issue);
+
+            var balancedList = avl.InOrder();
+            tvRequests.Nodes.Clear();
+            foreach (var issue in balancedList)
+                tvRequests.Nodes.Add($"{issue.TicketNumber} - {issue.Category} - Updated: {issue.LastUpdated:g}");
+
+            LoadRequestsBalanced();
+
+        }
+
     }
+
 }

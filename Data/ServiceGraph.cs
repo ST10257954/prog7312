@@ -12,6 +12,9 @@ namespace MunicipalServicesApp.Data
         private readonly Dictionary<string, List<(string dest, int weight)>> adjacencyList = new();
         private List<string> traversalOrder = new();
 
+        // ================================================================
+        // BASIC EDGE MANAGEMENT
+        // ================================================================
         public void AddEdge(string src, string dest, int weight = 1)
         {
             if (!adjacencyList.ContainsKey(src)) adjacencyList[src] = new List<(string, int)>();
@@ -20,6 +23,9 @@ namespace MunicipalServicesApp.Data
             adjacencyList[dest].Add((src, weight));
         }
 
+        // ================================================================
+        // BFS TRAVERSAL
+        // ================================================================
         public List<string> BFS(string start)
         {
             var visited = new HashSet<string>();
@@ -44,36 +50,61 @@ namespace MunicipalServicesApp.Data
                     }
                 }
             }
-
             return order;
         }
 
-        public int MinimumSpanningTreeCost()
+        // ================================================================
+        // PRIM'S ALGORITHM – MINIMUM SPANNING TREE (REAL DATA)
+        // ================================================================
+        public (List<(string From, string To, int Weight)> Edges, int TotalCost)
+            ComputeMST_Prim(string start)
         {
-            if (adjacencyList.Count == 0) return 0;
-            var nodes = adjacencyList.Keys.ToList();
-            var visited = new HashSet<string> { nodes[0] };
+            // ✅ Named tuple fields defined correctly here
+            var mstEdges = new List<(string From, string To, int Weight)>();
+            var visited = new HashSet<string>();
+
+            // SortedSet comparer using tuple positions (Item1, Item2, Item3)
+            var pq = new SortedSet<(int, string, string)>(
+                Comparer<(int, string, string)>.Create((a, b) =>
+                {
+                    int cmp = a.Item1.CompareTo(b.Item1);
+                    if (cmp == 0) cmp = (a.Item2 + a.Item3).CompareTo(b.Item2 + b.Item3);
+                    return cmp;
+                }));
+
+            if (!adjacencyList.ContainsKey(start))
+                return (new List<(string From, string To, int Weight)>(), 0);
+
+            visited.Add(start);
+            foreach (var (dest, weight) in adjacencyList[start])
+                pq.Add((weight, start, dest));
+
             int totalCost = 0;
 
-            while (visited.Count < nodes.Count)
+            while (pq.Count > 0 && visited.Count < adjacencyList.Count)
             {
-                (string src, string dest, int weight) minEdge = ("", "", int.MaxValue);
-                foreach (var src in visited)
+                var (weight, from, to) = pq.Min;
+                pq.Remove(pq.Min);
+
+                if (visited.Contains(to)) continue;
+
+                visited.Add(to);
+                mstEdges.Add((from, to, weight));
+                totalCost += weight;
+
+                foreach (var (dest, w) in adjacencyList[to])
                 {
-                    foreach (var (dest, weight) in adjacencyList[src])
-                    {
-                        if (!visited.Contains(dest) && weight < minEdge.weight)
-                            minEdge = (src, dest, weight);
-                    }
+                    if (!visited.Contains(dest))
+                        pq.Add((w, to, dest));
                 }
-                if (minEdge.weight == int.MaxValue) break;
-                visited.Add(minEdge.dest);
-                totalCost += minEdge.weight;
             }
 
-            return totalCost;
+            return (mstEdges, totalCost);
         }
 
+        // ================================================================
+        // DEMO GRAPH TRAVERSAL (OPTIONAL)
+        // ================================================================
         public void DemoGraphTraversal(List<Issue> issuesInArea, string areaName)
         {
             AddEdge("Ward A", "Ward B", 5);
@@ -84,19 +115,28 @@ namespace MunicipalServicesApp.Data
             var urgentIssues = issuesInArea.OrderBy(i => i.Priority).ToList();
             traversalOrder = BFS(areaName);
             string route = traversalOrder.Count > 0 ? string.Join(" → ", traversalOrder) : "(no connected route)";
-            int cost = MinimumSpanningTreeCost();
+
+            var (edges, totalCost) = ComputeMST_Prim(areaName);
+
+            string mstText = edges.Count == 0
+                ? "(No MST edges found)"
+                : string.Join("\n", edges.Select(e => $"{e.From} → {e.To} ({e.Weight})"));
 
             MessageBox.Show(
                 $"Optimised Service Route for {areaName}:\n\n" +
                 $"Pending requests: {urgentIssues.Count}\n" +
-                $"Route: {route}\n" +
-                $"Estimated total travel time: {cost} minutes",
+                $"BFS Route: {route}\n\n" +
+                $"MST Connections:\n{mstText}\n\n" +
+                $"Total Optimised Cost: {totalCost}",
                 "Optimised Service Route",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information
             );
         }
 
+        // ================================================================
+        // DRAWING VISUAL GRAPH (STATIC DEMO)
+        // ================================================================
         public void DrawGraph(PaintEventArgs e)
         {
             var g = e.Graphics;

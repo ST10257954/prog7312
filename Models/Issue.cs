@@ -27,6 +27,8 @@ namespace MunicipalServicesApp.Models
 
         public string Area { get; set; } = "Ward A";
         public string Status { get; set; } = "Pending";
+        public DateTime LastUpdated { get; set; } = DateTime.Now.AddMinutes(new Random().Next(-60, 60));
+
 
 
 
